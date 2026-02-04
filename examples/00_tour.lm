@@ -1,0 +1,12 @@
+// A quick tour of Lumen
+
+enum Option[T] { Some(T), None }
+
+fn parseInt(s: String) throws -> Int {
+  if s == "42" { 42 } else { return Err("not an int") }
+}
+
+fn main() throws io {
+  let n = try parseInt("42")
+  print("n = {n}")
+}

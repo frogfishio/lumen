@@ -1,0 +1,6 @@
+fn buildBuffer() -> Vec[U8] {
+  region {
+    let tmp = Vec[U8].withCapacity(1024)
+    tmp.clone()
+  }
+}

@@ -1,0 +1,5 @@
+fn main() async throws {
+  let app = http.server()
+  app.get("/", fn () { "Hello Web" })
+  await app.listen(8080)
+}
