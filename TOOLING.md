@@ -1,5 +1,7 @@
 # Lumen Tooling (Normative where stated)
 
+> Note: The v1.0 core language spec is in `SPEC.md`. Tooling applies to both freestanding `core` projects and optional hosted projects.
+
 ## CLI (Normative)
 - `lumen new <name>`
 - `lumen run`
@@ -21,7 +23,7 @@
 - go-to definition, references
 - rename (semantic)
 - code actions for fix-its
-- inlay hints (types + effects)
+- inlay hints (types)
 - format on save
 
 ## Formatter (Normative)

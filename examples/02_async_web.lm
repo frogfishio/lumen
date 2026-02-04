@@ -1,5 +1,17 @@
-fn main() async throws io {
-  let app = http.server()
-  app.get("/", fn () -> String { "Hello from Lumen" })
-  await app.listen(8080)
+// Traits are compile-time constraints (monomorphized).
+
+trait Eq {
+  fn eq(self: Self, other: Self) -> Bool;
+}
+
+impl Eq for I32 {
+  fn eq(self: I32, other: I32) -> Bool { self == other }
+}
+
+fn allEqual[T](a: T, b: T, c: T) -> Bool where T: Eq {
+  a.eq(b) && b.eq(c)
+}
+
+fn main() {
+  let _ = allEqual(1, 1, 2)
 }

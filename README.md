@@ -1,14 +1,21 @@
-# Lumen — Full Language Specification Bundle
+# Lumen — A 21st‑Century C
 
-This bundle contains a **full-blown** language specification for **Lumen** (v0.9-draft),
-covering syntax, semantics, types, effects, concurrency, memory, modules/packages,
-FFI, tooling, diagnostics, standard library conventions, and versioning.
+Lumen is a **freestanding-first**, **C ABI-native** language aimed at being a *real* C replacement:
+small, strongly typed, safe-by-default, and capable of producing extremely tight codegen.
 
-Files:
-- `SPEC.md` — Full specification (normative)
-- `DESIGN_RATIONALE.md` — Why key choices were made (non‑normative)
-- `TOOLING.md` — CLI, formatter, linter, LSP, build system
-- `STDLIB_SPEC.md` — Standard library surface + stability rules
-- `FFI_ABI.md` — C ABI + JS/WASM interop model
-- `COMPATIBILITY.md` — SemVer, editions, deprecations, feature gates
-- `EXAMPLES/` — Idiomatic programs demonstrating the spec
+Non-goals for the core language:
+- Mandatory runtime (GC, scheduler, exceptions)
+- Hidden allocations
+
+Docs:
+- `SPEC.md` — Core language specification (normative)
+- `LUMEN_EBNF.md` — Surface grammar (normative)
+- `FFI_ABI.md` — C ABI and representation rules (normative)
+- `CORELIB.md` — Core library contract (normative)
+- `COMPILER_MVP.md` — Implementation checklist (non-normative)
+- `TOOLING.md` — CLI and tooling expectations
+- `COMPATIBILITY.md` — Editions, deprecations, versioning policy
+ - `examples/` — Small example programs
+
+Legacy / future ideas (non-normative, may be reintroduced as an optional hosted profile):
+- `EFFECTS_SYSTEM.md`, `MEMORY_BORROW_ASYNC.md`, `STDLIB_API_SURFACE.md`

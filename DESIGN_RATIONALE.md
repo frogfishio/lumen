@@ -1,18 +1,16 @@
 # Lumen Design Rationale (Non‑normative)
 
-## Effects
-Hidden async/IO/exceptions cause refactor hazards. Effects make “what this code can do” explicit,
-while still enabling inference and ergonomic higher-order functions.
+## Why “new C”
+The modern world still runs on C ABIs, raw pointers, and layout-defined data. C is unbeatable as a portability layer,
+but its ergonomics and safety model are frozen in time.
 
-## Null avoidance
-Null creates ambiguous contracts. Option types make absence explicit and compiler-assisted.
+Lumen aims to keep C’s strengths (freestanding, tight codegen, ABI compatibility) while offering a 21st-century developer experience.
 
-## Structured concurrency
-Scope-bound tasks drastically reduce leaks, races, and shutdown complexity and make cancellation predictable.
+## Safe by default, unsafe when explicit
+Undefined behavior should be something you opt into and localize. Lumen makes dangerous operations explicit via `unsafe`.
 
-## Memory: automatic by default, control when needed
-Most developers want safety and speed of iteration. Advanced users want performance.
-Lumen provides a safe default and opt-in regions/unsafe for critical paths.
+## Small language, big tooling
+A “C replacement” lives or dies on usability: diagnostics, build UX, and interop workflows matter as much as syntax.
 
-## One formatter
-Tooling quality and collaboration improve when formatting is deterministic and universal.
+## Optional hosted world
+Kernel and embedded code need `core`. Services may want richer libraries. Lumen is designed so hosted facilities stay optional.

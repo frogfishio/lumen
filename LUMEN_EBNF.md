@@ -1,6 +1,6 @@
-# Lumen Complete Formal Grammar (EBNF) — v0.9-draft
+# Lumen Complete Formal Grammar (EBNF) — v1.0-draft
 
-This grammar is intended to be **complete** for the Lumen surface syntax described in the v0.9 spec bundle.
+This grammar is intended to be **complete** for the Lumen surface syntax described in `SPEC.md` (v1.0-draft).
 It is written in EBNF with the following conventions:
 
 - Terminals are in double quotes, e.g. `"fn"`.
@@ -59,8 +59,8 @@ ws            = " " | "\t" | "\r" | "\n"
 ```
 
 ### 1.3 Reserved keywords
-Terminals listed in the spec: `fn let mut if else match for while break continue return struct enum trait impl use as pub async await throws try defer io true false self super unsafe`
-Plus contextual keywords used here: `where type macro test extern dyn region`.
+Terminals listed in the spec: `fn let mut if else match for while loop break continue return struct enum trait impl use as pub try defer true false self super extern static unsafe in`
+Plus contextual keywords used here: `where type macro test const`.
 
 ---
 
@@ -70,6 +70,7 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
 <program>         = { <item> } <eof> ;
 
 <item>            = <use_item>
+                  | <extern_item>
                   | <fn_item>
                   | <struct_item>
                   | <enum_item>
@@ -102,13 +103,28 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
 <use_path_root>   = <ident> | "self" | "super" ;
 ```
 
+### 2.2 Extern declarations
+
+```
+<extern_item>     = <attrs> [ <visibility> ] "extern" <abi>
+                    ( <extern_fn_decl> | <extern_static_decl> ) ;
+
+<abi>             = <string_lit> ; /* e.g. "C" */
+
+<extern_fn_decl>  = [ "unsafe" ] "fn" <ident>
+                    "(" [ <param_list> ] ")"
+                    [ "->" <type> ]
+                    ";" ;
+
+<extern_static_decl> = "static" [ "mut" ] <ident> ":" <type> ";" ;
+```
+
 ### 2.2 Functions
 
 ```
-<fn_item>         = <attrs> [ <visibility> ] "fn" <ident>
+<fn_item>         = <attrs> [ <visibility> ] [ "unsafe" ] "fn" <ident>
                     [ <generic_params> ]
                     "(" [ <param_list> ] ")"
-                    [ <effects> ]
                     [ "->" <type> ]
                     <block> ;
 
@@ -116,13 +132,10 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
 <generic_param>   = <ident> [ ":" <type_bounds> ] ;
 
 <type_bounds>     = <type_bound> { "+" <type_bound> } ;
-<type_bound>      = <path> | "dyn" <path> ;
+<type_bound>      = <path> ;
 
 <param_list>      = <param> { "," <param> } [ "," ] ;
 <param>           = [ <attrs> ] <pat> ":" <type> ;
-
-<effects>         = <effect> { <effect> } ;
-<effect>          = "async" | "throws" | "io" ;
 
 <block>           = "{" { <stmt> } [ <expr> ] "}" ;
 ```
@@ -163,18 +176,9 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
 
 <fn_sig>          = <attrs> "fn" <ident>
                     [ <generic_params> ]
-                    "(" [ <param_list_or_receiver> ] ")"
-                    [ <effects> ]
+                    "(" [ <param_list> ] ")"
                     [ "->" <type> ]
                     [ <where_clause> ] ;
-
-<param_list_or_receiver> =
-                    <receiver> [ "," <param_list_tail> ] [ "," ]
-                  | <param_list> ;
-
-<param_list_tail> = <param> { "," <param> } ;
-
-<receiver>        = ( "&" [ "mut" ] "self" | "self" ":" <type> ) ;
 
 <impl_item>       = <attrs> [ "unsafe" ] "impl"
                     [ <generic_params> ]
@@ -189,10 +193,9 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
                   | <type_item_in_impl>      /* feature-gated */
                   | <const_item_in_impl> ;   /* feature-gated */
 
-<fn_item_in_impl> = <attrs> [ <visibility> ] "fn" <ident>
+<fn_item_in_impl> = <attrs> [ <visibility> ] [ "unsafe" ] "fn" <ident>
                     [ <generic_params> ]
-                    "(" [ <param_list_or_receiver> ] ")"
-                    [ <effects> ]
+                    "(" [ <param_list> ] ")"
                     [ "->" <type> ]
                     [ <where_clause> ]
                     <block> ;
@@ -243,8 +246,7 @@ Plus contextual keywords used here: `where type macro test extern dyn region`.
 ```
 <pat>             = <pat_or> ;
 
-<pat_or>          = <pat_and> { "|" <pat_and> } ;
-<pat_and>         = <pat_primary> { "&" <pat_primary> } ; /* rarely used; optional */
+<pat_or>          = <pat_primary> { "|" <pat_primary> } ;
 
 <pat_primary>     = "_"
                   | <ident_pat>
@@ -300,7 +302,7 @@ Expressions are organized by precedence (lowest at top).
 <expr_mul>        = <expr_unary> { ( "*" | "/" | "%" ) <expr_unary> } ;
 
 <expr_unary>      = { <unary_op> } <expr_postfix> ;
-<unary_op>        = "!" | "-" | "~" | "&" | "&mut" | "*" | "try" ;
+<unary_op>        = "!" | "-" | "~" | "&" | "*" | "try" ;
 
 <expr_postfix>    = <expr_primary> { <postfix> } ;
 
@@ -308,10 +310,11 @@ Expressions are organized by precedence (lowest at top).
                   | <index>
                   | <field_access>
                   | <method_call>
+                  | <cast_postfix>
                   | <type_args_postfix>    /* feature-gated (turbofish) */
-                  | <await_postfix> ;
+                  ;
 
-<await_postfix>   = "await" ;
+<cast_postfix>    = "as" <type> ;
 
 <type_args_postfix> = "::" <type_args> ;
 
@@ -320,7 +323,7 @@ Expressions are organized by precedence (lowest at top).
 <arg>             = <expr> | <named_arg> ;
 <named_arg>       = <ident> ":" <expr> ;
 
-<index>           = "[" <expr> "]" ;
+<index>           = "[" <expr> "]" [ "?" | "!" ] ;
 
 <field_access>    = "." <ident> ;
 <method_call>     = "." <ident> [ <type_args_postfix> ] "(" [ <arg_list> ] ")" ;
@@ -344,9 +347,7 @@ Expressions are organized by precedence (lowest at top).
                   | <continue_expr>
                   | <return_expr>
                   | <defer_expr>
-                  | <closure_expr>
                   | <unsafe_block_expr>
-                  | <region_block_expr>
                   | <paren_expr> ;
 
 <path_expr>       = <path> ;
@@ -370,8 +371,6 @@ Expressions are organized by precedence (lowest at top).
 <block_expr>      = <block> ;
 
 <unsafe_block_expr> = "unsafe" <block> ;
-
-<region_block_expr> = "region" <block> ;                      /* feature-gated but recommended */
 ```
 
 ### 4.2 Control-flow expressions
@@ -398,19 +397,6 @@ Expressions are organized by precedence (lowest at top).
 <defer_expr>      = "defer" <block> ;
 ```
 
-### 4.3 Closures (feature-gated shorthand variants omitted)
-```
-<closure_expr>    = [ "move" ] "fn" "(" [ <closure_params> ] ")"
-                    [ <effects> ]
-                    [ "->" <type> ]
-                    <block> ;
-
-<closure_params>  = <closure_param> { "," <closure_param> } [ "," ] ;
-<closure_param>   = <pat> [ ":" <type> ] ;
-```
-
----
-
 ## 5. Types
 
 Types also use precedence to avoid ambiguity.
@@ -420,19 +406,16 @@ Types also use precedence to avoid ambiguity.
 
 <type_fn_or>      = <type_primary>
                   | "fn" [ <generic_params> ] "(" [ <type_list> ] ")"
-                    [ <effects> ]
                     [ "->" <type> ] ;
 
 <type_primary>    = <type_ref>
                   | <type_path>
                   | <type_tuple>
                   | <type_array>
-                  | <type_paren>
-                  | <type_dyn> ;
+                  | <type_paren> ;
 
-<type_ref>        = "&" [ "mut" ] <type>
-                  | "Ptr" "[" <type> "]"
-                  | "Ref" "[" <type> "]" ;
+<type_ref>        = "Ptr" "[" <type> "]"
+                  | "Slice" "[" <type> "]" ;
 
 <type_path>       = <path> [ <type_args> ] ;
 
@@ -446,8 +429,6 @@ Types also use precedence to avoid ambiguity.
 <type_array>      = "[" <type> ";" <expr> "]" ;
 
 <type_paren>      = "(" <type> ")" ;
-
-<type_dyn>        = "dyn" <path> ;                             /* trait object */
 ```
 
 ---

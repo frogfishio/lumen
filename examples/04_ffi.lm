@@ -1,8 +1,8 @@
 @repr(C)
 struct CPoint { x: F64, y: F64 }
 
-extern "C" fn c_distance(p: Ptr[CPoint]) -> F64
+extern "C" unsafe fn c_distance(p: Ptr[CPoint]) -> F64;
 
-fn distance(p: &CPoint) unsafe -> F64 {
-  c_distance(Ptr.fromRef(p))
+unsafe fn distance(p: Ptr[CPoint]) -> F64 {
+  c_distance(p)
 }

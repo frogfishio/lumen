@@ -1,8 +1,9 @@
-fn describe(opt: Option[Int]) -> String {
-  match opt {
-    Some(x) if x > 0 => "positive {x}"
-    Some(0)          => "zero"
-    Some(x)          => "negative {x}"
-    None             => "missing"
+enum Sign { Neg, Zero, Pos }
+
+fn sign(x: I32) -> Sign {
+  match x {
+    0          => Zero
+    _ if x < 0 => Neg
+    _          => Pos
   }
 }

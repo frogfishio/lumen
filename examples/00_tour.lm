@@ -1,12 +1,20 @@
-// A quick tour of Lumen
+// A quick tour of Lumen (core profile)
 
-enum Option[T] { Some(T), None }
+enum Result[T, E] { Ok(T), Err(E) }
 
-fn parseInt(s: String) throws -> Int {
-  if s == "42" { 42 } else { return Err("not an int") }
+enum DivError { DivByZero }
+
+fn div(a: I32, b: I32) -> Result[I32, DivError] {
+  if b == 0 { Err(DivByZero) } else { Ok(a / b) }
 }
 
-fn main() throws io {
-  let n = try parseInt("42")
-  print("n = {n}")
+fn demo() -> Result[I32, DivError] {
+  defer { /* scope-exit cleanup lives here */ }
+  let x = try div(42, 2)
+  let y = try div(x, 0)
+  Ok(y)
+}
+
+fn main() {
+  let _ = demo()
 }

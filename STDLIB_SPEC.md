@@ -1,5 +1,7 @@
 # Standard Library Specification
 
+> **Note:** This is a v0.9-era sketch of a hosted standard library. The v1.0 core language spec in `SPEC.md` is freestanding-first and intentionally does not require a standard library.
+
 ## Stability tiers (Normative)
 - `core`: stable, no breaking changes within an Edition
 - `std`: stable, may add APIs

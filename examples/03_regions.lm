@@ -1,6 +1,14 @@
-fn buildBuffer() -> Vec[U8] {
-  region {
-    let tmp = Vec[U8].withCapacity(1024)
-    tmp.clone()
+// Slices are bounds-checked by default; unchecked indexing is `unsafe`.
+
+enum Option[T] { Some(T), None }
+
+fn getOrZero(xs: Slice[U8], i: Usize) -> U8 {
+  match xs[i]? {
+    Some(v) => v,
+    None => 0,
   }
+}
+
+unsafe fn getUnchecked(xs: Slice[U8], i: Usize) -> U8 {
+  xs[i]!
 }

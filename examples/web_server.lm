@@ -1,5 +1,16 @@
-fn main() async throws {
-  let app = http.server()
-  app.get("/", fn () { "Hello Web" })
-  await app.listen(8080)
+// Explicit runtime polymorphism (C-style vtable).
+
+@repr(C)
+struct WriterVTable {
+  write: fn(ctx: Ptr[Void], bytes: Slice[U8]) -> Usize,
+}
+
+@repr(C)
+struct Writer {
+  ctx: Ptr[Void],
+  v: Ptr[WriterVTable],
+}
+
+unsafe fn writerWrite(w: Writer, bytes: Slice[U8]) -> Usize {
+  (*w.v).write(w.ctx, bytes)
 }

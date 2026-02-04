@@ -1,20 +1,19 @@
-# Lumen Language Specification (v0.9-draft)
+# Lumen Language Specification (v1.0-draft)
 
 > **Status:** Draft. This document is *normative* unless marked “Non‑normative”.  
-> **Goals:** Exceptional DX, predictable correctness, scalable concurrency, pragmatic performance.
+> **Positioning:** Lumen is a **freestanding-first**, **C ABI-native**, small language intended to be a *real* C replacement.
 
----
+This v1.0 spec defines the **core language**. A hosted “std” profile (allocator + OS + networking + richer concurrency)
+may exist later, but is intentionally *out of scope* here.
 
 ## 0. Glossary (Normative)
+- **Core profile:** Freestanding language + core library; no OS assumptions; no mandatory allocator.
+- **Hosted profile:** Optional environment with an allocator and OS-backed libraries.
+- **Safe code:** Code outside `unsafe` that must not trigger undefined behavior.
+- **Unsafe code:** Code within `unsafe { ... }` or `unsafe fn` which may use operations requiring manual invariants.
 - **Module:** Compilation unit derived from a file.
 - **Package:** A publishable unit containing one or more modules.
-- **Effect:** A capability required by code (e.g., `async`, `throws`, `io`).
-- **Value type:** Type whose values are copied by value (subject to optimization).
-- **Reference type:** Type whose values refer to a heap object (subject to runtime).
-- **Region:** Optional scoped memory arena (opt-in performance feature).
-- **Edition:** A language “epoch” allowing breaking syntax/semantic changes.
-
----
+- **Edition:** A language epoch allowing breaking changes.
 
 ## 1. Source Text, Lexing, and Tokens (Normative)
 
@@ -22,11 +21,8 @@
 - Source files are UTF‑8.
 - Newlines are `\n` or `\r\n` and are normalized by the lexer.
 
-### 1.2 Whitespace and layout
+### 1.2 Whitespace
 - Whitespace separates tokens.
-- Lumen supports optional **layout mode** (significant indentation) but the canonical formatter outputs brace style.
-  - In layout mode, indentation produces implicit `{}` blocks where unambiguous.
-  - The formatter can convert between styles; semantics must match.
 
 ### 1.3 Comments
 - Line comment: `// ...`
@@ -37,25 +33,24 @@
 
 ### 1.4 Identifiers
 - Identifier: Unicode XID_Start + XID_Continue (recommended ASCII for public APIs).
-- Keywords (reserved):
-  `fn let mut if else match for while break continue return
-   struct enum trait impl use as pub
-   async await throws try defer
-   io
-   true false
-   self super
-   unsafe`
-- Contextual keywords (not reserved in all positions): `where`, `type`, `macro`, `test`.
+
+Reserved keywords:
+`fn let mut if else match for while loop break continue return
+ struct enum trait impl use as pub
+ try defer
+ true false
+ self super
+ extern static unsafe
+ in`
+
+Contextual keywords (not reserved in all positions): `where`, `type`, `const`, `macro`, `test`.
 
 ### 1.5 Literals
 - Integers: `123`, `0xFF`, `0b1010`, `_` separators allowed.
-- Floats: `1.0`, `1e-3`, `0x1.2p3` (hex float optional feature).
-- Strings: `"..."` with escapes; multi-line `"""..."""`.
+- Floats: `1.0`, `1e-3` (floating point is optional in some freestanding targets; see §3.1).
+- Strings: `"..."` with escapes (owned string types are library-defined).
 - Bytes: `b"..."`, byte literals `0x2A`.
 - Rune/char: `'a'`, `'\n'` (Unicode scalar value).
-- Interpolated strings: `"Hello, {name}!"` with expression slots.
-
----
 
 ## 2. Program Structure (Normative)
 
@@ -66,12 +61,11 @@
 ### 2.2 Declarations
 Top-level items:
 - `use` import
-- `fn` function
+- `fn` / `unsafe fn` function
 - `struct`, `enum`
 - `trait`, `impl`
-- `const`, `type` alias (optional feature gate)
-- `macro` (optional feature gate)
-- `test` blocks (compiled in test builds)
+- `extern` declarations (FFI)
+- `type` alias, `const` (feature-gated)
 
 ### 2.3 Visibility
 - Default: module-private.
@@ -79,254 +73,236 @@ Top-level items:
 - `pub(crate)` is public within the package.
 - Re-exports supported: `pub use foo::bar`.
 
----
-
 ## 3. Types (Normative)
 
 ### 3.1 Primitive types
+Core primitives are fixed-width and C-like:
 - `Bool`
 - Signed integers: `I8 I16 I32 I64 I128 Isize`
 - Unsigned integers: `U8 U16 U32 U64 U128 Usize`
-- Floating: `F32 F64`
+- Floating: `F32 F64` (may be unavailable on some freestanding targets; see §11.2)
 - `Char` (Unicode scalar)
-- `String` (UTF‑8, owned)
-- `Bytes` (owned bytes)
 - `Unit` written `()`
+- `Void` (uninhabited type; used primarily for `Ptr[Void]` and unreachable code)
 
 Aliases:
-- `Int` := `I64` (platform stable)
-- `UInt` := `U64`
+- `Int` := `Isize`
+- `UInt` := `Usize`
 
 ### 3.2 Composite types
 - Tuples: `(T1, T2, ...)`
 - Arrays: `[T; N]` where `N` is a compile-time constant
-- Slices: `[T]` (borrowed view) and `Slice[T]` (library alias)
 - Structs (product types)
-- Enums (sum types)
+- Enums (tagged unions / sum types)
 
-### 3.3 Reference and pointer types
-- `&T` immutable borrow (safe)
-- `&mut T` mutable borrow (safe, exclusive)
-- `Ptr[T]` raw pointer (unsafe operations required)
-- `Ref[T]` shared runtime reference (GC/ARC-managed object reference), used for reference types
-  - Most user-defined `struct` are value types by default.
-  - Library-provided reference types include `String`, `Vec[T]`, `Map[K,V]`, etc.
+### 3.2.1 Function types
+- Function types have the form: `fn(T1, T2, ...) -> Tr`.
+- A named function item can be used as a value of its corresponding function type.
+- Calling a function value `f(args...)` is equivalent to calling the referenced function.
 
-### 3.4 Option and Result
-- `Option[T] = Some(T) | None`
-- `Result[T, E] = Ok(T) | Err(E)`
-- No implicit null; `None` replaces nullability.
+### 3.3 Pointer and slice types
+- `Ptr[T]` is a raw pointer type suitable for C ABI.
+  - `Ptr[T]` may be null.
+  - Dereferencing, pointer arithmetic, and int↔ptr casts require `unsafe`.
+- `Slice[T]` is a fat pointer `{ ptr: Ptr[T], len: Usize }` with safe indexing.
 
-### 3.5 Any and dynamic
-- `Any` exists as an escape hatch behind a lint warning.
-- Runtime type info (RTTI) exists for `Any`, trait objects, and reflection-enabled builds.
+Notes:
+- References (`&T`, `&mut T`) are intentionally **not** part of the v1.0 core language. APIs use `Ptr[T]` and `Slice[T]`.
 
-### 3.6 Type inference
-- Local inference for `let` bindings and closures.
-- Public APIs should be explicit where inference would leak ambiguity.
+## 4. Safety Model (Normative)
 
-### 3.7 Generics
-- Parametric generics: `fn map[T, U](xs: Vec[T], f: fn(T)->U) -> Vec[U]`
-- Constraints via `where`:
-  `fn sort[T](xs: &mut Vec[T]) where T: Ord { ... }`
+### 4.1 The safety contract
+- **Safe code must not have undefined behavior.**
+- Operations capable of introducing undefined behavior are restricted to `unsafe` contexts.
 
-### 3.8 Traits (interfaces)
-- Traits declare required methods and associated types.
-- Implementations via `impl` blocks.
-- Coherence rule: A trait can be implemented for a type only in the package that defines the trait or the type (or via explicitly declared “extension packages” under feature gate).
+### 4.1.1 Traps
+A **trap** terminates execution immediately without unwinding. Implementations may lower a trap to an abort, a CPU trap instruction, or an equivalent mechanism.
 
-Trait objects:
-- `dyn Trait` erased type with vtable (behind `Ref` or `&`).
-- Trait object safety rules apply (no generic methods, limited associated types).
+### 4.2 Unsafe contexts
+Unsafe operations are permitted only within:
+- `unsafe { ... }` blocks
+- `unsafe fn ...` bodies
 
----
+### 4.3 Operations requiring `unsafe` (non-exhaustive)
+- Dereferencing `Ptr[T]`
+- Pointer arithmetic (including indexing through raw pointers)
+- Casting between integers and pointers
+- Calling `extern` functions, unless wrapped by a documented safe wrapper
+- Accessing `@repr(packed)` fields that may be unaligned
+- Inline assembly
 
-## 4. Values, Variables, and Bindings (Normative)
+## 5. Values, Variables, and Bindings (Normative)
 
-### 4.1 Let bindings
+### 5.1 Let bindings
 - `let x = expr` introduces an immutable binding.
 - `let mut x = expr` introduces a mutable binding.
-- Shadowing allowed: later `let x = ...` in inner scope.
+- Shadowing is allowed.
 
-### 4.2 Assignment
+### 5.2 Assignment
 - Assignment requires `mut` binding.
-- Compound assignment: `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, etc.
 
-### 4.3 Destructuring
-- Tuples, structs, enums support destructuring:
-  - `let (a, b) = pair`
-  - `let {x, y} = point`
-  - `match opt { Some(v) => ..., None => ... }`
+### 5.3 Moves, copies, and drops (v1.0 policy)
+- Assignments and argument passing have **value semantics**: values are copied (conceptually bitwise copy).
+- No mandatory destructors exist in the core language.
+- Resource management is performed via `defer` and library patterns (and explicit library calls like `close`).
 
----
+(A hosted profile may add richer drop semantics; out of scope for v1.0 core.)
 
-## 5. Expressions and Statements (Normative)
+## 6. Expressions and Statements (Normative)
 
-### 5.1 Expression-oriented blocks
+### 6.1 Expression-oriented blocks
 - Blocks evaluate to the last expression (if no trailing `;`).
 - Statements end with `;` and evaluate to `()`.
 
-### 5.2 Operators
+### 6.2 Evaluation order
+- Function arguments evaluate left-to-right.
+- `&&` and `||` short-circuit.
+- `match` scrutinee evaluates once.
+
+### 6.3 Operators
 - Arithmetic: `+ - * / %`
 - Comparison: `== != < <= > >=`
 - Boolean: `&& || !`
 - Bitwise: `& | ^ ~ << >>`
-- Range: `..` (exclusive), `..=` (inclusive)
 
-### 5.3 Control flow
+### 6.3.0 No implicit numeric conversions
+- There are no implicit numeric promotions or conversions.
+- Integer literals are type-inferred from context; if ambiguous, a defaulting rule may apply (implementation-defined) or an annotation is required.
+
+### 6.3.1 Integer overflow and shifts
+- Integer arithmetic is defined as two’s-complement wraparound for signed and unsigned integer types.
+- Shifts by an amount greater than or equal to the bit-width trap.
+
+### 6.3.2 Division and remainder
+- Division or remainder by zero trap.
+- For signed division, the behavior is defined as two’s-complement truncation toward zero.
+
+### 6.4 Pointers, address-of, dereference, and casts
+- `&place` computes a raw pointer `Ptr[T]` to a place expression (`place` is a local, parameter, field, array element, or dereference).
+  - `&place` is permitted only in `unsafe` contexts.
+- `*ptr` dereferences a raw pointer.
+  - Dereference is permitted only in `unsafe` contexts.
+- Pointer arithmetic is permitted only in `unsafe` contexts:
+  - `p + n` / `p - n` where `p: Ptr[T]` and `n: Int` yields `Ptr[T]`.
+  - `p1 - p2` where `p1: Ptr[T]` and `p2: Ptr[T]` yields `Isize` (element count).
+  - The programmer must uphold the usual C-like invariants (same allocation/object); violations are undefined behavior in `unsafe` code.
+
+Casts use `as`:
+- `e as T` performs an explicit cast.
+- Numeric casts are defined and never produce undefined behavior (they may wrap/truncate).
+- Pointer↔integer casts require `unsafe`.
+
+Numeric cast rules (v1.0 core):
+- Integer→integer: truncates or sign-extends as needed; the result is the source value modulo `2^N` where `N` is the destination bit width.
+- Integer→Bool: `0` becomes `false`, non-zero becomes `true`.
+- Bool→integer: `false` becomes `0`, `true` becomes `1`.
+- Float casts are defined only when `target_has_float` is true.
+
+### 6.4 Control flow
 - `if/else` is an expression.
-- Loops: `while`, `for x in iter`, `loop` (infinite)
+- Loops: `while`, `for x in iter`, `loop`
 - `break`, `continue`, `return`
-- `defer { ... }` executes at scope exit (even on early return)
+- `defer { ... }` executes at scope exit (LIFO), including on early return.
 
-### 5.4 Pattern matching
+### 6.5 Pattern matching
 - `match` must be exhaustive unless a wildcard `_` is present.
 - Guards: `Some(x) if x > 0 => ...`
 
-### 5.5 Closures
-- Closure syntax: `fn (x) { x + 1 }`
-- Captures inferred; capture by borrow unless moved with `move`.
+## 7. Generics and Traits (Normative)
 
----
+### 7.1 Generics are compile-time only
+- Generics are **monomorphized**: generic functions and types are specialized into concrete instantiations at compile time.
+- There is no runtime type information requirement.
 
-## 6. Effects System (Normative)
+### 7.2 Traits are compile-time constraints
+- Traits declare required functions/methods.
+- Trait bounds restrict generic type parameters: `fn sort[T](xs: Slice[T]) where T: Ord { ... }`
+- Trait dispatch is static by default (monomorphized).
 
-### 6.1 Effects in signatures
-Functions may require effects:
-- `async` — may suspend
-- `throws` — may produce recoverable errors
-- `io` — may perform IO (filesystem, network, env, clock, randomness)
+Within a trait definition and its `impl`, the identifier `Self` refers to the implementing type.
 
-Example:
-```lumen
-fn fetch(id: Id) async throws io -> Profile { ... }
-```
+### 7.3 Impl blocks and method-call sugar
+Lumen supports `impl` blocks for:
+- inherent impls: `impl Type { ... }`
+- trait impls: `impl Trait for Type { ... }`
 
-### 6.2 Effect subtyping
-- A function requiring fewer effects can be used where more effects are allowed.
-- Not vice versa.
+Method call syntax is sugar:
+- `x.f(a, b)` desugars to `Type.f(x, a, b)` if `f` resolves as a method for `Type` (inherent or via trait bounds).
+The receiver is simply the first parameter of the function as written.
 
-### 6.3 Effect polymorphism
-Higher-order functions reflect the effects of their callbacks:
-```lumen
-fn map[T,U](xs: Vec[T], f: fn(T) throws -> U) throws -> Vec[U] { ... }
-```
+### 7.4 Coherence (orphan rule)
+To keep resolution deterministic, an `impl Trait for Type` is legal only if:
+- The trait is defined in the current package, or
+- The type is defined in the current package.
 
-### 6.4 The `try` operator
-- `try expr` unwraps `Result`, propagating `Err` to caller (requires `throws`).
+### 7.5 No trait objects in core v1.0
+`dyn Trait` / implicit vtables are out of scope for v1.0 core.
+Runtime polymorphism is expressed explicitly via `@repr(C)` vtable structs and function pointers (see §10.4).
 
----
+## 8. Error Handling (Normative)
 
-## 7. Error Handling (Normative)
+### 8.1 No exceptions
+Core Lumen has no exceptions and no `throws` keyword.
 
-### 7.1 Result-first
-- Library APIs return `Result` for recoverable failures.
-- `throws` indicates a function may short-circuit with `Err`.
+### 8.2 Result-based APIs
+Recoverable failure is represented by a library `Result[T, E]` enum.
 
-### 7.2 Errors are typed
-- Standard error trait: `Error` with message + optional cause + optional backtrace.
+### 8.3 The `try` operator
+`try e` is sugar for early return on error when the enclosing function returns `Result[...]`.
 
-### 7.3 Panic / abort
-- `panic(msg)` is unrecoverable; intended for bugs.
-- Panics unwind by default in debug; may abort in release per config.
+Normative rewrite:
+- If `e` evaluates to `Ok(v)`, then `try e` evaluates to `v`.
+- If `e` evaluates to `Err(err)`, then `try e` returns `Err(err)` from the current function.
 
----
+If the current function’s return type is not `Result[...]`, `try` is a type error.
 
-## 8. Concurrency and Async (Normative)
+## 9. Slices and Indexing (Normative)
 
-### 8.1 Structured concurrency
-- `task { ... }` spawns a child task bound to the current scope.
-- Child tasks must be awaited/joined before scope exit, unless detached (requires `io` or `unsafe`).
+Given a value `xs: Slice[T]` and `i: Usize`:
+- `xs[i]` performs a bounds check; on out-of-bounds it traps (freestanding-friendly abort/trap).
+- `xs[i]?` returns `Option[T]`.
+- `xs[i]!` is unchecked and is permitted only in `unsafe` contexts.
 
-### 8.2 Async/await
-- `await expr` awaits an async value.
-- Standard executor provided; pluggable runtimes allowed.
+For `p: Ptr[T]`:
+- `p[i]!` is permitted only in `unsafe` contexts and is sugar for `*(p + (i as Int))`.
+- `p[i]` and `p[i]?` are invalid (raw pointers have no length).
 
-### 8.3 Cancellation
-- Cooperative cancellation is propagated through scopes.
-- Cancellation token is standard.
+## 10. Interoperability (Normative)
 
-### 8.4 Shared state
-- Prefer: channels.
-- Shared mutation requires explicit sync types.
+### 10.1 `extern "C"`
+- `extern "C"` items use the platform C ABI.
+- Only C-compatible types may appear in `extern "C"` signatures (see `FFI_ABI.md`).
 
----
+### 10.2 Representation
+Representation attributes are defined in `FFI_ABI.md`:
+- `@repr(C)`
+- `@repr(transparent)`
+- `@repr(packed)` (unsafe to access unaligned)
 
-## 9. Memory Model (Normative)
+### 10.3 No implicit allocation across ABI
+The core language does not define an owned `String`/`Vec` type. Any such types are library-defined and must not cross the C ABI boundary unless explicitly specified as C-compatible wrappers.
 
-### 9.1 Default model
-- Automatic memory management for heap objects.
-- Escape analysis may move values to heap.
+### 10.4 Explicit vtables (C-friendly runtime polymorphism)
+When runtime polymorphism is needed, it is expressed explicitly:
+- a `@repr(C)` vtable struct containing function pointers
+- a `{ ctx: Ptr[Void], vtable: Ptr[VTable] }` handle
 
-### 9.2 Borrowing
-- `&T` and `&mut T` enforce aliasing rules statically.
-- Borrowing across `await` is restricted unless proven safe.
+This pattern is C ABI-compatible and auditable.
 
-### 9.3 Regions (opt-in)
-- `region { ... }` creates an arena; allocations freed at end.
-- Escaping values must be copied/promoted.
-
-### 9.4 Unsafe
-- `unsafe { ... }` allows raw pointers, FFI, unchecked casts.
-- Unsafe code must uphold documented invariants.
-
----
-
-## 10. Data Types (Normative)
-
-### 10.1 Structs
-```lumen
-struct Point { x: F64, y: F64 }
-```
-
-### 10.2 Enums
-```lumen
-enum Option[T] { Some(T), None }
-```
-
-### 10.3 Methods and impl blocks
-- Methods are functions with receivers (feature-gated shorthand allowed).
-
----
-
-## 11. Modules, Imports, and Packages (Normative)
-
-### 11.1 Imports
-- `use path::to::Thing`
-- `use foo::bar as baz`
-- `use foo::*` discouraged by linter.
-
-### 11.2 Packages
-- Manifest: `lumen.toml`
-- Lockfile: `lumen.lock`
-- Deterministic dependency resolution with checksums.
-
-### 11.3 Build profiles
-- `dev`, `test`, `release`
-- Feature flags explicit and recorded.
-
----
-
-## 12. Interoperability (Normative summary; details in FFI_ABI.md)
-- C ABI interop supported.
-- WASM target supported; JS bridge standard.
-- FFI requires `unsafe` unless wrapped safely.
-
----
-
-## 13. Attributes and Feature Gates (Normative)
-- `@inline`, `@deprecated("msg")`, `@test`, `@cfg(feature="x")`
+## 11. Attributes and Feature Gates (Normative)
+- `@inline`, `@deprecated("msg")`, `@test`, `@cfg(...)`
 - Experimental features require explicit enablement.
 
----
+### 11.1 `@cfg(...)`
+Items annotated with `@cfg(cond)` are included only when `cond` evaluates true at compile time.
+For v1.0 core, the required target predicates are:
+- `target_has_float`
+- `target_pointer_width = 16|32|64`
+- `target_endian = "little"|"big"`
 
-## 14. Diagnostics (Normative)
+### 11.2 Floating point availability
+If `target_has_float` is false, referencing `F32`/`F64` or using float literals is a compile-time error unless guarded by `@cfg(target_has_float)`.
+
+## 12. Diagnostics (Normative)
 - Every diagnostic has a stable code like `E0421`.
 - Diagnostics include machine-readable fix-its when safe.
-
----
-
-## Appendix A: Evaluation order (Normative)
-- Function arguments evaluated left-to-right.
-- `&&` and `||` short-circuit.
-- `match` scrutinee evaluated once.

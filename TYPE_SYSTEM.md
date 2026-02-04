@@ -1,5 +1,7 @@
 # Lumen Type System, Inference Rules, and Trait Resolution (v0.9-draft)
 
+> **Note:** This document describes Lumen’s earlier v0.9 direction (effects-aware inference, trait solving, etc.). It is **not** part of the v1.0 “new C” core language spec in `SPEC.md`. Some ideas may be reused, but the core spec is authoritative.
+
 > **Scope:** This chapter is intended to be added to `SPEC.md` as a normative section.  
 > **Status:** Draft-but-detailed. Where an implementation must choose between options, the spec makes the choice explicit.  
 > **Notation:** Judgments use `Γ ⊢ e : τ ▷ ε` meaning “under environment Γ, expression e has type τ and requires effect-set ε”.
