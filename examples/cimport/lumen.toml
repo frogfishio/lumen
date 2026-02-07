@@ -1,0 +1,15 @@
+[package]
+name = "cimport_demo"
+edition = "2026"
+
+[cimport.libc_stdio]
+headers = ["stdio.h"]
+output = "src/c/stdio.lm"
+
+# Optional knobs for reproducibility. Uncomment and fill in as needed:
+# target = "x86_64-apple-darwin"
+# include_dirs = ["/usr/include"]
+# defines = ["_DARWIN_C_SOURCE=1"]
+# sysroot = "/path/to/sdk"
+# clang = "clang"
+# clang_args = ["-std=c11"]

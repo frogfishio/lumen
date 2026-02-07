@@ -10,6 +10,7 @@ Produce a working `lumen` compiler that can:
 - Emit a native object file
 - Link an executable
 - Interop with C via `extern "C"` and `@repr(C)`
+ - Support deterministic C header import (`lumen cimport`) for hosted targets (at least a minimal subset)
 
 ## 1. Non-goals (MVP)
 
@@ -99,8 +100,18 @@ Create a `tests/` folder with “compile-pass” and “compile-fail” fixtures
 
 - `compile-pass/`
   - `hello.lm` (main function)
+  - `address_of_safe.lm` (`&place` is safe; creates `Ptr[T]`)
+  - `static_zero_init.lm` (`static` defaults to zero-init)
+  - `static_init_const.lm` (`static` initializer is compile-time)
   - `defer_order.lm` (nested defers)
+  - `defer_break_continue.lm` (`defer` runs on `break`/`continue`)
   - `result_try.lm` (`try` propagation)
+  - `for_slice_basic.lm` (`for` over `Slice[T]`)
+  - `for_array_basic.lm` (`for` over `[T; N]`)
+  - `ffi_union_repr_c.lm` (`@repr(C)` union layout + unsafe field access)
+  - `ffi_bitfield_repr_c.lm` (`@repr(C)` bitfields via `@bits(N)`)
+  - `ffi_varargs_printf_decl.lm` (`extern "C"` varargs declaration + call)
+  - `asm_noreturn.lm` (`asm` with `noreturn` has type `Void`)
   - `traits_static_dispatch.lm` (bound + impl selection)
   - `slice_index_checked.lm` (`xs[i]`, `xs[i]?`)
   - `ffi_struct_repr_c.lm` (`@repr(C)` struct)
@@ -110,6 +121,16 @@ Create a `tests/` folder with “compile-pass” and “compile-fail” fixtures
   - `unsafe_required_ptr_cast.lm` (`p as Usize` outside unsafe)
   - `unsafe_required_unchecked_index.lm` (`xs[i]!` outside unsafe)
   - `try_requires_result_return.lm` (`try` in non-Result fn)
+  - `for_non_iterable.lm` (`for` requires `Slice[T]` or `[T; N]`)
+  - `for_refutable_pat.lm` (refutable `for` pattern rejected)
+  - `let_refutable_pat.lm` (refutable `let` pattern rejected)
+  - `match_non_exhaustive_enum.lm` (missing enum variant without `_`)
+  - `match_guard_not_exhaustive.lm` (guards don’t count for exhaustiveness)
+  - `dot_trait_method_rejected.lm` (dot-call does not resolve trait methods; UFCS suggested)
+  - `ambiguous_int_literal.lm` (ambiguous integer literal rejected)
+  - `ffi_varargs_invalid_arg.lm` (varargs requires promoted C ABI types)
+  - `static_mut_requires_unsafe.lm` (`static mut` access requires `unsafe`)
+  - `static_init_non_const.lm` (static initializer rejects non-const expressions)
 
 The runner can be as simple as:
 - compile-pass: `lumen check` exits 0

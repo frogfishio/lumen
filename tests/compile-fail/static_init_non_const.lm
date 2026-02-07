@@ -1,0 +1,5 @@
+fn f() -> U32 { 1 as U32 }
+
+static X: U32 = f();
+
+fn main() { let _ = X; }

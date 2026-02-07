@@ -16,6 +16,8 @@ Docs:
 - `TOOLING.md` — CLI and tooling expectations
 - `COMPATIBILITY.md` — Editions, deprecations, versioning policy
  - `examples/` — Small example programs
+ - `conformance/c_abi/` — C ABI conformance harness (target-specific)
+ - `examples/cimport/` — Example `lumen.toml` for reproducible C header import
 
 Legacy / future ideas (non-normative, may be reintroduced as an optional hosted profile):
 - `EFFECTS_SYSTEM.md`, `MEMORY_BORROW_ASYNC.md`, `STDLIB_API_SURFACE.md`

@@ -1,0 +1,11 @@
+fn main() {
+  let x: I32 = 123;
+  let xs: Slice[I32] = Slice { ptr: &x, len: 0 as Usize };
+
+  let mut sum: I32 = 0;
+  for y in xs {
+    sum = sum + y;
+  }
+
+  let _ = sum;
+}

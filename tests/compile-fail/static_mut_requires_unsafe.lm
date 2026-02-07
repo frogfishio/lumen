@@ -1,0 +1,5 @@
+static mut X: U32;
+
+fn main() {
+  let _ = X;
+}

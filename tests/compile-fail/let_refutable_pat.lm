@@ -1,0 +1,7 @@
+enum Maybe[T] { Some(T), None }
+
+fn main() {
+  let m: Maybe[I32] = Some(1);
+  let Some(x) = m;
+  let _ = x;
+}

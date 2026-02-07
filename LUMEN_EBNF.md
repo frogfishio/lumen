@@ -60,7 +60,7 @@ ws            = " " | "\t" | "\r" | "\n"
 
 ### 1.3 Reserved keywords
 Terminals listed in the spec: `fn let mut if else match for while loop break continue return struct enum trait impl use as pub try defer true false self super extern static unsafe in`
-Plus contextual keywords used here: `where type macro test const`.
+Plus contextual keywords used here: `where type macro test const asm`.
 
 ---
 
@@ -72,7 +72,9 @@ Plus contextual keywords used here: `where type macro test const`.
 <item>            = <use_item>
                   | <extern_item>
                   | <fn_item>
+                  | <static_item>
                   | <struct_item>
+                  | <union_item>
                   | <enum_item>
                   | <trait_item>
                   | <impl_item>
@@ -112,11 +114,22 @@ Plus contextual keywords used here: `where type macro test const`.
 <abi>             = <string_lit> ; /* e.g. "C" */
 
 <extern_fn_decl>  = [ "unsafe" ] "fn" <ident>
-                    "(" [ <param_list> ] ")"
+                    "(" [ <extern_param_list> ] ")"
                     [ "->" <type> ]
                     ";" ;
 
+<extern_param_list> = "..."
+                   | <param_list> [ "," "..." ] ;
+
 <extern_static_decl> = "static" [ "mut" ] <ident> ":" <type> ";" ;
+```
+
+### 2.2.1 Static items
+
+```
+<static_item>     = <attrs> [ <visibility> ] "static" [ "mut" ] <ident> ":" <type>
+                    [ "=" <expr> ] ";" ;
+/* Note: The initializer expression is restricted by `SPEC.md` (static initializer expressions). */
 ```
 
 ### 2.2 Functions
@@ -150,6 +163,9 @@ Plus contextual keywords used here: `where type macro test const`.
 <struct_fields>   = "{" [ <field_list> ] "}" ;
 <field_list>      = <field> { "," <field> } [ "," ] ;
 <field>           = <attrs> [ <visibility> ] <ident> ":" <type> ;
+
+<union_item>      = <attrs> [ <visibility> ] "union" <ident>
+                    ( <struct_fields> ";" | <struct_fields> | ";" ) ;
 
 <enum_item>       = <attrs> [ <visibility> ] "enum" <ident>
                     [ <generic_params> ]
@@ -347,6 +363,7 @@ Expressions are organized by precedence (lowest at top).
                   | <continue_expr>
                   | <return_expr>
                   | <defer_expr>
+                  | <asm_expr>
                   | <unsafe_block_expr>
                   | <paren_expr> ;
 
@@ -395,6 +412,18 @@ Expressions are organized by precedence (lowest at top).
 <return_expr>     = "return" [ <expr> ] ;
 
 <defer_expr>      = "defer" <block> ;
+
+<asm_expr>        = "asm" "(" <string_lit> [ "," <asm_part_list> ] ")" ;
+<asm_part_list>   = <asm_part> { "," <asm_part> } [ "," ] ;
+<asm_part>        = <asm_in>
+                  | <asm_out>
+                  | <asm_clobber>
+                  | <asm_options> ;
+
+<asm_in>          = "in" "(" <string_lit> ")" <expr> ;
+<asm_out>         = "out" "(" <string_lit> ")" <expr> ;
+<asm_clobber>     = "clobber" "(" <string_lit> ")" ;
+<asm_options>     = "options" "(" <string_lit> { "," <string_lit> } [ "," ] ")" ;
 ```
 
 ## 5. Types

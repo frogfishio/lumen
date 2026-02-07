@@ -1,0 +1,10 @@
+enum Maybe[T] { Some(T), None }
+
+fn main() {
+  let m: Maybe[I32] = None;
+  let xs: Slice[Maybe[I32]] = Slice { ptr: &m, len: 0 as Usize };
+
+  for Some(x) in xs {
+    let _ = x;
+  }
+}

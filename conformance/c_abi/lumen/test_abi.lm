@@ -1,0 +1,106 @@
+@repr(C)
+struct Flags {
+  @bits(1) a: U32,
+  @bits(3) b: U32,
+  rest: U32,
+}
+
+@repr(C)
+union Union4 {
+  a: U32,
+  b: [U8; 4],
+}
+
+extern "C" unsafe fn c_sizeof_flags() -> Usize;
+extern "C" unsafe fn c_alignof_flags() -> Usize;
+extern "C" unsafe fn c_offsetof_flags_rest() -> Usize;
+extern "C" unsafe fn c_sizeof_union4() -> Usize;
+extern "C" unsafe fn c_alignof_union4() -> Usize;
+
+extern "C" unsafe fn c_pack_flags(a: U32, b: U32, rest: U32, out: Ptr[U8], out_len: Usize) -> ();
+extern "C" unsafe fn c_pack_union4_a(a: U32, out: Ptr[U8], out_len: Usize) -> ();
+extern "C" unsafe fn c_pack_union4_b(in4: Ptr[U8], out: Ptr[U8], out_len: Usize) -> ();
+extern "C" unsafe fn c_copy_bytes(src: Ptr[Void], out: Ptr[U8], n: Usize) -> ();
+
+extern "C" unsafe fn c_varargs_mix(ignored: Ptr[Void], ...) -> U64;
+
+fn fail() -> Void {
+  unsafe { core.intrinsics.trap() }
+}
+
+fn assertEqUsize(a: Usize, b: Usize) -> () {
+  if a != b { fail() }
+}
+
+fn assertEqU8Slice(a: Slice[U8], b: Slice[U8]) -> () {
+  if a.len != b.len { fail() }
+  let mut i: Usize = 0 as Usize;
+  while i < a.len {
+    if a[i] != b[i] { fail() }
+    i = i + (1 as Usize);
+  }
+}
+
+fn main() {
+  // Basic layout probes (sizes/alignments/offsets).
+  unsafe {
+    let _sf = c_sizeof_flags();
+    let _af = c_alignof_flags();
+    let _of = c_offsetof_flags_rest();
+    let _su = c_sizeof_union4();
+    let _au = c_alignof_union4();
+
+    // TODO: once Lumen provides `sizeof/alignof/offsetof` intrinsics, compare them here.
+    let _ = _sf; let _ = _af; let _ = _of; let _ = _su; let _ = _au;
+  }
+
+  // Byte layout equivalence: Flags
+  let mut cbuf_f: [U8; 32] = [0 as U8; 32];
+  let mut lbuf_f: [U8; 32] = [0 as U8; 32];
+  let csl_f: Slice[U8] = Slice { ptr: &cbuf_f[0], len: 32 as Usize };
+  let lsl_f: Slice[U8] = Slice { ptr: &lbuf_f[0], len: 32 as Usize };
+
+  let f: Flags = Flags { a: 1 as U32, b: 5 as U32, rest: 0xAABBCCDD as U32 };
+
+  unsafe {
+    c_pack_flags(f.a, f.b, f.rest, &cbuf_f[0], 32 as Usize);
+    c_copy_bytes((&f) as Ptr[Void], &lbuf_f[0], c_sizeof_flags());
+  }
+
+  // Compare only the C-reported struct size prefix.
+  let sz_f: Usize = unsafe { c_sizeof_flags() };
+  assertEqU8Slice(
+    Slice { ptr: csl_f.ptr, len: sz_f },
+    Slice { ptr: lsl_f.ptr, len: sz_f },
+  );
+
+  // Byte layout equivalence: Union4
+  let mut cbuf_u: [U8; 32] = [0 as U8; 32];
+  let mut lbuf_u: [U8; 32] = [0 as U8; 32];
+  let csl_u: Slice[U8] = Slice { ptr: &cbuf_u[0], len: 32 as Usize };
+  let lsl_u: Slice[U8] = Slice { ptr: &lbuf_u[0], len: 32 as Usize };
+
+  let mut u: Union4 = Union4 { a: 0 as U32 };
+  unsafe {
+    u.a = 0x11223344 as U32;
+    c_pack_union4_a(0x11223344 as U32, &cbuf_u[0], 32 as Usize);
+    c_copy_bytes((&u) as Ptr[Void], &lbuf_u[0], c_sizeof_union4());
+  }
+
+  let sz_u: Usize = unsafe { c_sizeof_union4() };
+  assertEqU8Slice(
+    Slice { ptr: csl_u.ptr, len: sz_u },
+    Slice { ptr: lsl_u.ptr, len: sz_u },
+  );
+
+  // Varargs calling convention sanity: x (I32), p (Ptr), y (U64).
+  unsafe {
+    let x: I32 = 7 as I32;
+    let p: Ptr[Void] = ((0x1234 as Usize) as Ptr[Void]);
+    let y: U64 = 9 as U64;
+    let ignored: Ptr[Void] = ((0 as Usize) as Ptr[Void]);
+    let got: U64 = c_varargs_mix(ignored, x, p, y);
+    let expect: U64 = (x as U64) ^ ((p as Usize) as U64) ^ (y << (1 as U64));
+    if got != expect { fail() }
+  }
+}

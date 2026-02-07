@@ -1,0 +1,13 @@
+@repr(C)
+struct Flags {
+  @bits(1) a: U32,
+  @bits(3) b: U32,
+  rest: U32,
+}
+
+fn main() {
+  let mut f: Flags = Flags { a: 0 as U32, b: 0 as U32, rest: 0 as U32 };
+  f.a = 1 as U32;
+  f.b = 7 as U32;
+  let _ = f.rest;
+}

@@ -1,0 +1,9 @@
+extern "C" unsafe fn printf(fmt: Ptr[U8], ...) -> I32;
+
+fn main() {
+  unsafe {
+    let fmt: Ptr[U8] = ((0 as Usize) as Ptr[U8]);
+    // U8 is not a permitted varargs argument type; it must be explicitly promoted/cast.
+    let _rc = printf(fmt, 1 as U8);
+  }
+}
