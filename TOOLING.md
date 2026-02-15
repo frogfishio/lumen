@@ -71,6 +71,21 @@ Normative requirements:
 - Performance and style lints available
 - `@allow/@deny` at module level
 
+### Recommended lint packs (Non-normative)
+
+#### Concurrency / atomics
+Recommended pack name: `concurrency`.
+- Flag invalid or nonsensical memory order usage (e.g. `Acquire` on a store, `Release` on a load) with fix-its.
+- Flag suspicious overuse of `SeqCst` in hot paths; suggest weaker orders when patterns match known safe idioms.
+- Flag `static mut` usage in hosted/concurrent targets and suggest `core.atomic`/`std.atomic` or synchronization primitives.
+- Flag volatile/MMIO patterns that likely require a compiler/hardware fence (e.g. mixing volatile device register access with non-volatile descriptor writes); suggest `core.atomic.compilerFence`/`core.atomic.fence` or `asm` with `"memory"` clobber.
+
+#### SIMD / performance
+Recommended pack name: `simd`.
+- Warn on likely-misaligned SIMD loads/stores where an unaligned form exists; suggest `loadUnaligned`/`storeUnaligned` or alignment via `@align`.
+- Suggest SIMD vectorization skeletons for simple loops (best-effort, opt-in).
+  - Provide code actions that rewrite a scalar loop into a `std.simd` loop template, leaving correctness to the user.
+
 ## C interop workflows (Normative for official toolchains)
 
 ### Header export (`lumen cbindgen`)

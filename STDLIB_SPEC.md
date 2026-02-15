@@ -20,6 +20,8 @@
 - `std.map`: Map[K,V]
 - `std.set`: Set[T]
 - `std.string`: String/Str
+- `std.atomic`: atomic types and helpers (hosted DX layer over `core.atomic`)
+- `std.simd`: SIMD vector types and operations (portable API with target specializations)
 - `std.io`: File/Path/Stream
 - `std.net.http`: HTTP client/server
 - `std.json`: JSON parsing/encoding

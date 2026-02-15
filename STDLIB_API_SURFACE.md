@@ -84,6 +84,8 @@ The standard library is split into three tiers:
 - `std.vec`
 - `std.map`
 - `std.set`
+- `std.atomic`
+- `std.simd`
 - `std.io`
 - `std.path`
 - `std.env`
@@ -566,7 +568,103 @@ pub fn Command.run(self: Command) async io throws -> Output
 
 ---
 
-## 15. Backwards Compatibility Guarantees (Normative Summary)
+## 15. Atomics and SIMD (Normative)
+
+These modules provide a high-DX layer for performance-critical code while preserving explicit control over ordering and codegen.
+They are intended for hosted toolchains, but the APIs are usable in freestanding environments if the platform supports the required primitives.
+
+### 15.1 `std.atomic` (Normative)
+
+`std.atomic` is a thin wrapper over `core.atomic` that:
+- exposes all memory order knobs explicitly
+- provides convenience helpers for common patterns (CAS loops, backoff)
+- enables better diagnostics and linting (see `TOOLING.md`)
+
+Re-exports (normative):
+```lumen
+pub use core.atomic::{MemoryOrder, AtomicBool, AtomicU32, AtomicI32, AtomicUsize, AtomicIsize};
+pub use core.atomic::{fence, compilerFence};
+```
+
+Convenience helpers (normative):
+```lumen
+pub fn atomic.loadBool(p: Ptr[AtomicBool], order: MemoryOrder) -> Bool
+pub fn atomic.storeBool(p: Ptr[AtomicBool], v: Bool, order: MemoryOrder) -> ()
+
+pub fn atomic.loadUsize(p: Ptr[AtomicUsize], order: MemoryOrder) -> Usize
+pub fn atomic.storeUsize(p: Ptr[AtomicUsize], v: Usize, order: MemoryOrder) -> ()
+
+pub fn atomic.casUsize(
+  p: Ptr[AtomicUsize],
+  expected: Ptr[Usize],
+  desired: Usize,
+  success: MemoryOrder,
+  failure: MemoryOrder,
+) -> Bool
+```
+
+Backoff (normative):
+```lumen
+pub struct Backoff { /* opaque */ }
+pub fn Backoff.new() -> Backoff
+pub fn Backoff.spin(self: Ptr[Backoff]) -> ()
+pub fn Backoff.snooze(self: Ptr[Backoff]) -> ()
+```
+
+### 15.2 `std.simd` (Normative)
+
+`std.simd` provides explicit SIMD vector types and operations with a portable interface.
+Implementations may lower operations to target SIMD instructions (SSE/AVX/NEON/etc.) when available, and may provide software fallbacks.
+
+Vector types (normative minimum set for hosted toolchains):
+```lumen
+pub struct U8x16 { /* opaque */ }
+pub struct I32x4 { /* opaque */ }
+pub struct U32x4 { /* opaque */ }
+pub struct F32x4 { /* opaque */ }   // only when `target_has_float`
+pub struct F64x2 { /* opaque */ }   // only when `target_has_float`
+```
+
+Constructors (“literal-like” APIs) (normative):
+```lumen
+pub fn U8x16.splat(x: U8) -> U8x16
+pub fn U8x16.new(a0: U8, a1: U8, a2: U8, a3: U8, a4: U8, a5: U8, a6: U8, a7: U8,
+                 a8: U8, a9: U8, a10: U8, a11: U8, a12: U8, a13: U8, a14: U8, a15: U8) -> U8x16
+
+pub fn I32x4.splat(x: I32) -> I32x4
+pub fn I32x4.new(a0: I32, a1: I32, a2: I32, a3: I32) -> I32x4
+```
+
+Loads/stores (normative):
+```lumen
+pub unsafe fn U8x16.load(p: Ptr[U8]) -> U8x16
+pub unsafe fn U8x16.loadUnaligned(p: Ptr[U8]) -> U8x16
+pub unsafe fn U8x16.store(self: U8x16, p: Ptr[U8]) -> ()
+pub unsafe fn U8x16.storeUnaligned(self: U8x16, p: Ptr[U8]) -> ()
+```
+
+Arithmetic and bit ops (normative subset):
+```lumen
+pub fn I32x4.add(self: I32x4, other: I32x4) -> I32x4
+pub fn I32x4.sub(self: I32x4, other: I32x4) -> I32x4
+pub fn U8x16.and(self: U8x16, other: U8x16) -> U8x16
+pub fn U8x16.or(self: U8x16, other: U8x16) -> U8x16
+pub fn U8x16.xor(self: U8x16, other: U8x16) -> U8x16
+```
+
+Lane access (normative):
+```lumen
+pub fn I32x4.lane(self: I32x4, idx: Usize) -> I32
+pub fn I32x4.withLane(self: I32x4, idx: Usize, v: I32) -> I32x4
+```
+
+Shuffles/select (normative):
+```lumen
+pub fn U8x16.shuffle(self: U8x16, idx: [U8; 16]) -> U8x16
+pub fn U8x16.select(mask: U8x16, a: U8x16, b: U8x16) -> U8x16
+```
+
+## 16. Backwards Compatibility Guarantees (Normative Summary)
 
 Within the same Edition:
 - Existing `core`/`std` public items will not change signature or semantics incompatibly.
@@ -576,7 +674,7 @@ Within the same Edition:
 
 ---
 
-## 16. Non-normative: Future Work
+## 17. Non-normative: Future Work
 - A formatting macro system (`fmt!`, `dbg!`) with compile-time checking
 - Stronger iterator ergonomics (`for` desugaring details)
 - `std.fs` split from `std.io`
