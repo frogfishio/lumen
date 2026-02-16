@@ -96,7 +96,7 @@ Deliverable:
 
 ## 3. Conformance Tests (recommended early)
 
-Create a `tests/` folder with “compile-pass” and “compile-fail” fixtures. MVP set:
+Create a `conformance-suite/` folder with “compile-pass” and “compile-fail” fixtures. MVP set:
 
 - `compile-pass/`
   - `hello.lm` (main function)
@@ -108,16 +108,22 @@ Create a `tests/` folder with “compile-pass” and “compile-fail” fixtures
   - `result_try.lm` (`try` propagation)
   - `for_slice_basic.lm` (`for` over `Slice[T]`)
   - `for_array_basic.lm` (`for` over `[T; N]`)
+  - `slice_index_forms.lm` (`xs[i]`, `xs[i]?`, `xs[i]!` in unsafe)
+  - `pointer_index_unsafe.lm` (`p[i]!` in unsafe)
+  - `match_exhaustive_enum.lm` (enum match is exhaustive)
+  - `lexer_nested_comments.lm` (nested block comments; unicode identifiers)
+  - `traits_ufcs_call.lm` (trait method call via UFCS)
   - `ffi_union_repr_c.lm` (`@repr(C)` union layout + unsafe field access)
   - `ffi_bitfield_repr_c.lm` (`@repr(C)` bitfields via `@bits(N)`)
   - `ffi_varargs_printf_decl.lm` (`extern "C"` varargs declaration + call)
-  - `asm_noreturn.lm` (`asm` with `noreturn` has type `Void`)
   - `traits_static_dispatch.lm` (bound + impl selection)
   - `slice_index_checked.lm` (`xs[i]`, `xs[i]?`)
   - `ffi_struct_repr_c.lm` (`@repr(C)` struct)
 - `compile-fail/`
   - `unsafe_required_deref.lm` (`*p` outside unsafe)
+  - `pointer_index_requires_unsafe.lm` (`p[i]!` outside unsafe)
   - `unsafe_required_extern_call.lm` (`extern` call outside unsafe)
+  - `extern_call_requires_unsafe.lm` (`extern "C"` call outside unsafe)
   - `unsafe_required_ptr_cast.lm` (`p as Usize` outside unsafe)
   - `unsafe_required_unchecked_index.lm` (`xs[i]!` outside unsafe)
   - `try_requires_result_return.lm` (`try` in non-Result fn)
@@ -131,6 +137,12 @@ Create a `tests/` folder with “compile-pass” and “compile-fail” fixtures
   - `ffi_varargs_invalid_arg.lm` (varargs requires promoted C ABI types)
   - `static_mut_requires_unsafe.lm` (`static mut` access requires `unsafe`)
   - `static_init_non_const.lm` (static initializer rejects non-const expressions)
+  - `union_field_requires_unsafe.lm` (union field access requires `unsafe`)
+  - `bitfield_not_addressable.lm` (`@bits` field cannot be addressed)
+
+Optional feature-gated suites:
+- `feature-asm/`
+  - `compile-pass/asm_noreturn.lm` (`asm` with `noreturn` has type `Void`)
 
 The runner can be as simple as:
 - compile-pass: `lumen check` exits 0

@@ -1,0 +1,7 @@
+fn main() {
+  let x: I32 = 1;
+  let p: Ptr[I32] = &x;
+  unsafe {
+    let _y: I32 = p[0 as Usize]!;
+  }
+}

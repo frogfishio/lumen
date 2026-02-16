@@ -1,0 +1,10 @@
+enum E { A, B, C }
+
+fn main() {
+  let e: E = A;
+  let _x: I32 = match e {
+    A => 1,
+    B => 2,
+    C => 3,
+  };
+}

@@ -1,0 +1,9 @@
+/* outer
+  /* inner */
+  still outer
+*/
+fn main() {
+  // Unicode identifiers are permitted by the lexer.
+  let π: I32 = 3;
+  let _ = π;
+}

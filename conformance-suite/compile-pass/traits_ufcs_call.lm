@@ -1,0 +1,13 @@
+trait Inc {
+  fn inc(x: Self) -> Self;
+}
+
+impl Inc for I32 {
+  fn inc(x: I32) -> I32 { x + (1 as I32) }
+}
+
+fn main() {
+  let x: I32 = 1;
+  let y: I32 = Inc.inc(x);
+  let _ = y;
+}

@@ -1,0 +1,16 @@
+fn main() {
+  let x: I32 = 1;
+  let xs: Slice[I32] = Slice { ptr: &x, len: 0 as Usize };
+  let i: Usize = 0 as Usize;
+
+  // Checked (traps on OOB at runtime).
+  let _a: I32 = xs[i];
+
+  // Optional.
+  let _b = xs[i]?;
+
+  // Unchecked: allowed only in unsafe.
+  unsafe {
+    let _c: I32 = xs[i]!;
+  }
+}

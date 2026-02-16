@@ -25,7 +25,7 @@ This harness assumes:
 
 Run:
 ```sh
-./conformance/c_abi/run.sh
+./conformance-suite/c_abi/run.sh
 ```
 
 If your `lumen` toolchain does not yet support “emit object” + linking, treat `run.sh` as a template and wire it up once the build pipeline exists.
