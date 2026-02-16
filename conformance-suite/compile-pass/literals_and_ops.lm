@@ -1,0 +1,14 @@
+fn main() {
+  let a: I32 = 123;
+  let b: I32 = 0xFF;
+  let c: I32 = 0b1010;
+
+  let d: I32 = (a + b) * c - (1 as I32);
+  let e: Bool = (d != 0) && (d > (0 as I32)) || !(false);
+  let f: U32 = (~(0 as U32)) & (0xFF as U32);
+  let g: U32 = (1 as U32) << (3 as U32);
+
+  let _ = e;
+  let _ = f;
+  let _ = g;
+}

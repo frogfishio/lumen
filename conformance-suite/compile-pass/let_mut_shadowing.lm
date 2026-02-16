@@ -1,0 +1,9 @@
+fn main() {
+  let x: I32 = 1;
+  let x: I32 = x + (1 as I32); // shadow
+
+  let mut y: I32 = 0;
+  y = y + x;
+
+  let _ = y;
+}

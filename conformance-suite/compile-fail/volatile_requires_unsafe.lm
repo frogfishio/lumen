@@ -1,0 +1,4 @@
+fn main() {
+  let mmio: Ptr[U32] = (0 as Usize) as Ptr[U32];
+  let _x: U32 = core.intrinsics.volatileLoad(mmio);
+}

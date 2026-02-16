@@ -1,0 +1,5 @@
+fn ok() -> Result[I32, I32] { Ok(1 as I32) }
+
+fn main() {
+  let _x: I32 = try ok();
+}

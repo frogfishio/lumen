@@ -1,0 +1,5 @@
+static mut X: U32 = 0 as U32;
+
+fn main() {
+  X = 1 as U32;
+}

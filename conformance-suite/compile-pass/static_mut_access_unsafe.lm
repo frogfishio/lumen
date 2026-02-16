@@ -1,0 +1,8 @@
+static mut X: U32 = 0 as U32;
+
+fn main() {
+  unsafe {
+    X = 1 as U32;
+    let _ = X;
+  }
+}

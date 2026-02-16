@@ -1,0 +1,4 @@
+fn main() {
+  let p: Ptr[U8] = (0 as Usize) as Ptr[U8];
+  let _x: Usize = p as Usize;
+}

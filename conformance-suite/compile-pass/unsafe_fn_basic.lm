@@ -1,0 +1,11 @@
+unsafe fn read(p: Ptr[I32]) -> I32 {
+  *p
+}
+
+fn main() {
+  let x: I32 = 1;
+  let p: Ptr[I32] = &x;
+  unsafe {
+    let _ = read(p);
+  }
+}

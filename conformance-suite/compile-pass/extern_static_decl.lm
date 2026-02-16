@@ -1,0 +1,7 @@
+extern "C" static mut errno: I32;
+
+fn main() {
+  unsafe {
+    let _ = errno;
+  }
+}

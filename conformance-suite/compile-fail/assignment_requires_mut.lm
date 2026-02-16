@@ -1,0 +1,4 @@
+fn main() {
+  let x: I32 = 1;
+  x = 2 as I32;
+}

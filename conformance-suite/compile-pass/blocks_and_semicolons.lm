@@ -1,0 +1,9 @@
+fn main() {
+  let a: I32 = { 1 as I32 };
+  let b: I32 = { 1 as I32; 2 as I32 };
+  let c: () = { 1 as I32; };
+
+  let _ = a;
+  let _ = b;
+  let _ = c;
+}

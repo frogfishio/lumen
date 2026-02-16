@@ -3,6 +3,6 @@ enum E { A, B }
 fn main() {
   let e: E = A;
   match e {
-    A => 1
+    A => 1,
   };
 }

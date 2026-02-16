@@ -1,0 +1,6 @@
+fn main() {
+  let _s = "hello\\nworld";
+  let _b = b"abc";
+  let _c: Char = 'λ';
+  let _d: Char = '\\n';
+}
