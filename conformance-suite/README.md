@@ -5,6 +5,7 @@ This folder is the single source of truth for Lumen’s conformance fixtures: a 
 Layout:
 - `compile-pass/`: programs that must compile for a v1.0 core toolchain
 - `compile-fail/`: programs that must fail (preferably with a stable error code)
+- `packages/`: multi-file package fixtures (module tree, visibility, imports)
 - `feature-*/`: feature-gated suites (optional; not required for core conformance)
 - `c_abi/`: C ABI oracle harness (C + Lumen, target-specific; validates unions/bitfields/varargs/layout)
 

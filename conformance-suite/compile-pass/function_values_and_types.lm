@@ -1,0 +1,7 @@
+fn add1(x: I32) -> I32 { x + (1 as I32) }
+
+fn main() {
+  let f: fn(I32) -> I32 = add1;
+  let y: I32 = f(41 as I32);
+  let _ = y;
+}

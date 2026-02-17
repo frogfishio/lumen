@@ -1,0 +1,3 @@
+[package]
+name = "super_paths_and_pub_super"
+edition = "2026"

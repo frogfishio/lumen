@@ -1,0 +1,29 @@
+fn idI8(x: I8) -> I8 { return x; }
+fn idI16(x: I16) -> I16 { return x; }
+fn idI64(x: I64) -> I64 { return x; }
+fn idI128(x: I128) -> I128 { return x; }
+fn idU16(x: U16) -> U16 { return x; }
+fn idU128(x: U128) -> U128 { return x; }
+
+@cfg(target_has_float)
+fn idF32(x: F32) -> F32 { return x; }
+
+fn main() {
+  let a: I8 = 1;
+  let b: I16 = 2;
+  let c: I64 = 3;
+  let d: I128 = 4;
+  let e: U16 = 5;
+  let f: U128 = 6;
+  let g: UInt = 7;
+
+  let _ = idI8(a);
+  let _ = idI16(b);
+  let _ = idI64(c);
+  let _ = idI128(d);
+  let _ = idU16(e);
+  let _ = idU128(f);
+  let _ = g;
+
+  return;
+}

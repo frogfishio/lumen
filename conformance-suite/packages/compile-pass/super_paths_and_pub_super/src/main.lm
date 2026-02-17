@@ -1,0 +1,5 @@
+use a::call_child;
+
+fn main() {
+  let _ = call_child();
+}

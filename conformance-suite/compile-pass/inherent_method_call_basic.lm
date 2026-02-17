@@ -1,0 +1,15 @@
+struct Counter { v: I32 }
+
+impl Counter {
+  fn inc(c: Counter) -> Counter {
+    Counter { v: c.v + (1 as I32) }
+  }
+
+  fn get(c: Counter) -> I32 { c.v }
+}
+
+fn main() {
+  let c0: Counter = Counter { v: 0 as I32 };
+  let c1: Counter = c0.inc();
+  let _x: I32 = c1.get();
+}

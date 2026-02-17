@@ -1,14 +1,12 @@
+use self::{Inner as Renamed, mk};
+
 pub struct PubType { x: I32 }
 struct PrivType { y: I32 }
 
 pub fn make() -> PubType { PubType { x: 1 as I32 } }
 
-mod inner {
-  pub struct Inner { z: I32 }
-  pub fn mk() -> Inner { Inner { z: 2 as I32 } }
-}
-
-pub use inner::{Inner as Renamed, mk};
+struct Inner { z: I32 }
+fn mk() -> Inner { Inner { z: 2 as I32 } }
 
 fn main() {
   let a: PubType = make();

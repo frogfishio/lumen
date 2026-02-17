@@ -1,0 +1,5 @@
+pub(crate) fn f() -> I32 { 1 as I32 }
+
+fn main() {
+  let _ = f();
+}
