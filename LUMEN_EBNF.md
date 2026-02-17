@@ -48,7 +48,6 @@ ws            = " " | "\t" | "\r" | "\n"
 
 <char_lit>     = "'" <char_body> "'" ;
 <string_lit>   = '"' { <string_char> } '"' ;
-<ml_string_lit> = ' { <ml_string_char> } ' ;
 
 <bytes_lit>    = 'b"' { <byte_char> } '"' ;
 
@@ -244,13 +243,10 @@ Plus contextual keywords used here: `where type macro test const asm`.
 
 ```
 <stmt>            = <let_stmt>
-                  | <item_stmt>
                   | <expr_stmt>
                   | <semi_stmt> ;
 
 <semi_stmt>       = ";" ;
-
-<item_stmt>       = <item> ; /* items allowed in block scope */
 
 <let_stmt>        = <attrs> "let" [ "mut" ] <pat> [ ":" <type> ] "=" <expr> ";" ;
 
@@ -289,7 +285,7 @@ Plus contextual keywords used here: `where type macro test const asm`.
 
 <paren_pat>       = "(" <pat> ")" ;
 
-<literal>         = <int_lit> | <float_lit> | <string_lit> | <ml_string_lit>
+<literal>         = <int_lit> | <float_lit> | <string_lit>
                   | <char_lit> | <bytes_lit> | "true" | "false" ;
 ```
 

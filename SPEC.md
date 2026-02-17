@@ -56,8 +56,19 @@ Additional contextual keyword used by this spec: `asm`.
 ## 2. Program Structure (Normative)
 
 ### 2.1 Modules and files
-- Each file is a module.
-- The package defines a module tree with a root module (`main` for binaries, `lib` for libraries).
+Each file is a module. The package defines a module tree with a root module.
+
+#### 2.1.1 Package root
+- A binary package root module is `src/main.lm`.
+- A library package root module is `src/lib.lm`.
+- Exactly one of `src/main.lm` or `src/lib.lm` must exist.
+
+#### 2.1.2 Submodules by path
+The module path of a source file is derived from its path under `src/`:
+- `src/a.lm` defines module `a`.
+- `src/a/b.lm` defines module `a::b`.
+
+There is no `mod` item in the v1.0 core language; module structure is defined by the file layout.
 
 ### 2.2 Declarations
 Top-level items:
@@ -75,6 +86,7 @@ Top-level items:
 - Default: module-private.
 - `pub` makes an item public to importing packages.
 - `pub(crate)` is public within the package.
+- `pub(super)` is public to the parent module only (it is invalid in the root module).
 - Re-exports supported: `pub use foo::bar`.
 
 ### 2.4 Static items
@@ -200,6 +212,25 @@ Unsafe operations are permitted only within:
 - Function arguments evaluate left-to-right.
 - `&&` and `||` short-circuit.
 - `match` scrutinee evaluates once.
+
+### 6.2.1 Named arguments in calls
+An argument in a call may be positional (`expr`) or named (`name: expr`).
+
+Rules (normative):
+- Named arguments bind to parameters by name.
+- A call may mix positional and named arguments, but once a named argument is used, all subsequent arguments must be named.
+- Each parameter may be provided at most once.
+- It is a compile-time error to supply a name that is not a parameter name.
+- Evaluation order is left-to-right as written in the source, independent of reordering for parameter binding.
+
+### 6.2.2 Array literals
+Arrays may be constructed with:
+- an element list: `[e0, e1, ..., eN]`, or
+- a repeat form: `[value; count]`.
+
+Rules (normative):
+- In `[value; count]`, `value` is evaluated exactly once.
+- `count` must be a compile-time constant non-negative integer. The resulting array type is `[T; count]` where `T` is the type of `value`.
 
 ### 6.3 Operators
 - Arithmetic: `+ - * / %`
