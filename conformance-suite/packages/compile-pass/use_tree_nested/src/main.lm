@@ -1,0 +1,6 @@
+use a::{mk, b::{Thing as Renamed, mkThing}};
+
+fn main() {
+  let _x: I32 = mk();
+  let _t: Renamed = mkThing();
+}

@@ -1,0 +1,11 @@
+struct S { a: I32, b: I32, c: I32 }
+
+fn main() {
+  let a: I32 = 10 as I32;
+  let base: S = S { a: 1 as I32, b: 2 as I32, c: 3 as I32 };
+  let s: S = S { a, b: 9 as I32, ..base };
+
+  let _ = s.a;
+  let _ = s.b;
+  let _ = s.c;
+}

@@ -79,6 +79,25 @@ Top-level items:
 - `union`
 - `trait`, `impl`
 - `extern` declarations (FFI)
+
+#### 2.2.1 `use` items (imports and re-exports)
+`use` brings names into scope (and may re-export them when preceded by `pub`).
+
+Forms (surface syntax; see `LUMEN_EBNF.md` for the full tree grammar):
+- Single import: `use path;`
+- Aliased import: `use path as Name;`
+- Tree import: `use prefix::{a, b as c, nested::{d, e}};`
+- Re-export: `pub use path;` (also works with tree imports)
+
+Rules (normative):
+- A `use` item resolves each leaf path to an item in the current package or an imported package (toolchain-defined package mechanism).
+- For a leaf of the form `use path;` with no `as`:
+  - the introduced name is the last segment of `path`.
+  - it is a compile-time error if `path` ends in `self` or `super` (no last segment).
+- `self` and `super` may appear as the root of a `use` path, as in other paths (see §2.1 and §6 Paths).
+- `use prefix::{...}` behaves as if each element in `{...}` were written with `prefix::` prepended, recursively.
+- A `use` item introduces bindings in the current module scope. It is a compile-time error to introduce two bindings with the same name in the same scope (unless shadowing is permitted by an explicit, toolchain-defined rule; core v1.0 recommends error).
+- `pub use` makes the imported binding part of the current module’s public interface, subject to the normal visibility rules.
 - `extern static` declarations (FFI)
 - `type` alias, `const` (feature-gated)
 
@@ -146,6 +165,13 @@ Aliases:
 - Arrays: `[T; N]` where `N` is a compile-time constant
 - Structs (product types)
 - Enums (tagged unions / sum types)
+
+#### 3.2.1 Field and variant visibility
+Fields of `struct`/`union` and variants of `enum` may carry a visibility modifier.
+
+Rules (normative):
+- Default visibility for fields and variants is module-private.
+- `pub`, `pub(crate)`, and `pub(super)` on a field or variant use the same meaning as item visibility (§2.3).
 
 ### 3.2.1 Function types
 - Function types have the form: `fn(T1, T2, ...) -> Tr`.
@@ -237,6 +263,24 @@ Rules (normative):
 - Comparison: `== != < <= > >=`
 - Boolean: `&& || !`
 - Bitwise: `& | ^ ~ << >>`
+
+### 6.3.3 Composite literals: struct literals
+A struct literal has the form `Type { fields... }`.
+
+Field forms (surface syntax):
+- `field: expr` sets the field explicitly.
+- `field` is shorthand for `field: field` (it uses the in-scope binding named `field`).
+- `.. base` is a struct update initializer that supplies omitted fields from `base`.
+
+Rules (normative):
+- The `Type` in a struct literal must resolve to a `struct` type.
+- If no `.. base` is present, every field of `Type` must be specified exactly once.
+- If `.. base` is present:
+  - `base` must have type `Type`.
+  - each field explicitly listed in the literal overrides the corresponding field from `base`.
+  - every field not explicitly listed is taken from `base`.
+  - `.. base` must appear at most once and must be the last field initializer in the literal.
+- Field initializers evaluate left-to-right as written. If `.. base` is present, `base` evaluates after all explicit field initializers.
 
 ### 6.3.0 No implicit numeric conversions
 - There are no implicit numeric promotions or conversions.

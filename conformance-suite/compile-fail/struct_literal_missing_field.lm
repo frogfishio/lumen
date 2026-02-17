@@ -1,0 +1,5 @@
+struct S { a: I32, b: I32, c: I32 }
+
+fn main() {
+  let _s: S = S { a: 1 as I32 };
+}
