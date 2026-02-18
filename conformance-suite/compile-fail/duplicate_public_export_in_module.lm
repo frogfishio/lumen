@@ -1,0 +1,8 @@
+mod main;
+
+mod m {
+  pub fn f() -> I32 { 1 as I32 }
+  pub fn f() -> I32 { 2 as I32 }
+}
+
+fn main() -> I32 { 0 as I32 }

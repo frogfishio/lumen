@@ -1,0 +1,35 @@
+mod main;
+
+mod util {
+  pub fn add(a: I32, b: I32) -> I32 { a + b }
+
+  pub struct Point { pub x: I32, pub y: I32 }
+
+  pub mod fmt {
+    pub fn banner() -> I32 { 123 as I32 }
+  }
+}
+
+use util;
+use util as U;
+use util::add;
+use util::Point as P;
+use util::*;
+use util { add as add2, fmt };
+
+fn main() -> I32 {
+  let a: I32 = add(20 as I32, 1 as I32);
+  let b: I32 = util::add(a, 1 as I32);
+  let c: I32 = add2(b, 1 as I32);
+  let d: I32 = fmt::banner();
+  let e: I32 = U::fmt::banner();
+
+  let p: P = P { x: a, y: c };
+
+  let _ = d;
+  let _ = e;
+  let _ = p.x;
+  let _ = p.y;
+
+  0 as I32
+}

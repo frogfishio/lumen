@@ -1,1 +1,3 @@
+mod a;
+
 pub fn mk() -> I32 { 1 as I32 }

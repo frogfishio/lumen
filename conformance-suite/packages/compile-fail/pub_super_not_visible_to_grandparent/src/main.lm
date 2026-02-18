@@ -1,3 +1,5 @@
+mod main;
+
 fn main() {
   let _ = a::b::g();
 }

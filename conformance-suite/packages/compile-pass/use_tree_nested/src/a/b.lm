@@ -1,3 +1,5 @@
+mod a::b;
+
 pub struct Thing { pub x: I32 }
 
 pub fn mkThing() -> Thing { Thing { x: 2 as I32 } }

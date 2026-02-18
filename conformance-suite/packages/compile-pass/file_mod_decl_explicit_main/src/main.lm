@@ -1,0 +1,8 @@
+mod main;
+
+use steve::f;
+
+fn main() -> I32 {
+  let _: I32 = f();
+  0 as I32
+}

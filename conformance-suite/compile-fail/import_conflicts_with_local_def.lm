@@ -1,0 +1,14 @@
+mod main;
+
+mod util {
+  pub fn log() -> I32 { 1 as I32 }
+}
+
+fn log() -> I32 { 0 as I32 }
+
+use util::log;
+
+fn main() -> I32 {
+  let _ = log();
+  0 as I32
+}

@@ -65,7 +65,7 @@ ws            = " " | "\t" | "\r" | "\n"
 ```
 
 ### 1.3 Reserved keywords
-Terminals listed in the spec: `fn let mut if else match for while loop break continue return struct enum trait impl use as pub try defer true false self super extern static unsafe in`
+Terminals listed in the spec: `fn let mut if else match for while loop break continue return struct enum trait impl use as pub mod try defer true false self super extern static unsafe in`
 Plus contextual keywords used here: `where type macro test const asm`.
 
 ---
@@ -73,10 +73,14 @@ Plus contextual keywords used here: `where type macro test const asm`.
 ## 2. Top-level Structure
 
 ```
-<program>         = { <item> } <eof> ;
+<program>         = [ <file_mod_decl> ] { <item> } <eof> ;
+
+<file_mod_decl>   = "mod" <module_path> ";" ;
+<module_path>     = <ident> { "::" <ident> } ;
 
 <item>            = <use_item>
                   | <extern_item>
+                  | <mod_item>
                   | <fn_item>
                   | <static_item>
                   | <struct_item>
@@ -102,8 +106,12 @@ Plus contextual keywords used here: `where type macro test const asm`.
 ```
 <use_item>        = <attrs> [ <visibility> ] "use" <use_tree> ";" ;
 
+<mod_item>        = <attrs> [ <visibility> ] "mod" <ident> "{" { <item> } "}" ;
+
 <use_tree>        = <use_path> [ "as" <ident> ]
-                  | <use_path> "::" "{" <use_tree_list> "}" ;
+                  | <use_path> "::" "*"                                /* glob */
+                  | <use_path> "::" "{" <use_tree_list> "}"            /* grouped */
+                  | <use_path> "{" <use_tree_list> "}" ;               /* sugar grouped */
 
 <use_tree_list>   = <use_tree> { "," <use_tree> } [ "," ] ;
 

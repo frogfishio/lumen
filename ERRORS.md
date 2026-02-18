@@ -20,3 +20,8 @@ The v1.0 core spec requires stable diagnostic codes (see `SPEC.md`). Toolchains 
 - `E0507` Invalid static initializer (must be compile-time)
 - `E0508` Access to `static mut` requires `unsafe`
 - `E0509` Invalid inline asm form (unsupported options/operands)
+- `E0510` Missing file module declaration (`mod name;`) for non-root source file
+- `E0511` Import conflicts with local definition
+- `E0512` Conflicting explicit imports (use alias)
+- `E0513` Ambiguous glob import
+- `E0514` Duplicate public export in module

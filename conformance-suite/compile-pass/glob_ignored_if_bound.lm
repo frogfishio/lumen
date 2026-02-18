@@ -1,0 +1,18 @@
+mod main;
+
+mod util {
+  pub fn add() -> I32 { 1 as I32 }
+}
+
+mod math {
+  pub fn add() -> I32 { 2 as I32 }
+}
+
+use util::*;
+use math::*;
+use util::add;
+
+fn main() -> I32 {
+  let _ = add();
+  0 as I32
+}

@@ -1,0 +1,3 @@
+mod steve;
+
+pub fn f() -> I32 { 123 as I32 }
