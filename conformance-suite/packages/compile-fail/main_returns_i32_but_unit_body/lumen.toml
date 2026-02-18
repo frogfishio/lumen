@@ -1,0 +1,3 @@
+[package]
+name = "main_returns_i32_but_unit_body"
+edition = "2026"

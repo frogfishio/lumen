@@ -71,6 +71,21 @@ The module path of a source file is derived from its path under `src/`:
 
 There is no `mod` item in the v1.0 core language; module structure is defined by the file layout.
 
+#### 2.1.3 Binary entry point (`main`) (Hosted toolchains; normative when applicable)
+The v1.0 core language is freestanding-first and does not require an OS or process model.
+However, hosted toolchains that build executable programs must define a standard entry point.
+
+Rules (normative for hosted toolchains):
+- A binary package must define a top-level function named `main` in the root module.
+- `main` must be non-generic and must not be `unsafe`.
+- The only supported `main` signatures in v1.0 are:
+  - `fn main() { ... }` (i.e. return type `()`)
+  - `fn main() -> I32 { ... }`
+- If `main` returns `()`, the process exit code is `0`.
+- If `main` returns `I32`, the process exit code is that value (platform mapping is toolchain-defined but must be deterministic).
+
+Freestanding toolchains may ignore `main` entirely and use a target-specific entry point (toolchain-defined).
+
 ### 2.2 Declarations
 Top-level items:
 - `use` import
