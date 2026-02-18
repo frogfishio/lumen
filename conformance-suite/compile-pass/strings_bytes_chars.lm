@@ -1,6 +1,11 @@
 fn main() {
-  let _s = "hello\\nworld";
-  let _b = b"abc";
+  let _s: Str = "hello\nworld";
+  let _r: Str = r"hello\\nworld";
+  let _b: Bytes = b"abc\n";
+  let _cs: CStr = c"hi\n";
   let _c: Char = 'λ';
-  let _d: Char = '\\n';
+  let _d: Char = '\n';
+
+  let _ = _r;
+  let _ = _cs;
 }

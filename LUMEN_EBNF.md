@@ -48,8 +48,15 @@ ws            = " " | "\t" | "\r" | "\n"
 
 <char_lit>     = "'" <char_body> "'" ;
 <string_lit>   = '"' { <string_char> } '"' ;
+<raw_string_lit> = 'r"' { <raw_string_char> } '"' ;
 
 <bytes_lit>    = 'b"' { <byte_char> } '"' ;
+<c_string_lit> = 'c"' { <string_char> } '"' ;
+
+/* Informal character sets used above (real implementations should use a lexer):
+   - <string_char> allows escape sequences and any non-quote, non-newline character.
+   - <raw_string_char> is any non-quote, non-newline character (no escapes processed).
+   - <byte_char> is any ASCII byte character except quote/newline, plus escapes (toolchain-defined exact set). */
 
 <comment_line> = "//" { /* any char except newline */ } ;
 <comment_block> = "/*" { <comment_block> | /* any char */ } "*/" ;
@@ -285,8 +292,11 @@ Plus contextual keywords used here: `where type macro test const asm`.
 
 <paren_pat>       = "(" <pat> ")" ;
 
-<literal>         = <int_lit> | <float_lit> | <string_lit>
-                  | <char_lit> | <bytes_lit> | "true" | "false" ;
+<literal>         = <int_lit> | <float_lit>
+                  | <string_lit> | <raw_string_lit>
+                  | <bytes_lit> | <c_string_lit>
+                  | <char_lit>
+                  | "true" | "false" ;
 ```
 
 ---

@@ -10,6 +10,10 @@ Example:
 extern "C" fn strlen(s: Ptr[U8]) -> Usize
 ```
 
+Convenience (non-ABI-changing):
+- `CStr` is a core alias for `Ptr[U8]` with the documented invariant “points to a NUL-terminated byte sequence”.
+- `c"..."` is a C string literal that produces a `CStr` (UTF‑8 bytes with an implicit trailing NUL; no interior NULs).
+
 ## Representation attributes (Normative)
 - `@repr(C)`
 - `@repr(transparent)`
@@ -24,6 +28,7 @@ The following mappings define what may appear in `extern "C"` function signature
 - `Bool` is a 1-byte integer in memory and ABI; `0` is false and `1` is true.
 - `Char` is a 32-bit Unicode scalar value (ABI-compatible with `uint32_t`).
 - `Ptr[T]` maps to `T*` (`Ptr[Void]` maps to `void*`).
+- `CStr` maps to `char*`/`const char*` depending on mutability expectations of the API; it is ABI-identical to `Ptr[U8]`.
 - `Slice[T]` maps to:
   ```c
   struct { T* ptr; uintptr_t len; }

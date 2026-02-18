@@ -1,0 +1,4 @@
+fn main() {
+  let _s: CStr = c"hi\0there";
+  let _ = _s;
+}

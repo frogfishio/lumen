@@ -49,8 +49,9 @@ Additional contextual keyword used by this spec: `asm`.
 ### 1.5 Literals
 - Integers: `123`, `0xFF`, `0b1010`, `_` separators allowed.
 - Floats: `1.0`, `1e-3` (floating point is optional in some freestanding targets; see §3.1).
-- Strings: `"..."` with escapes (owned string types are library-defined).
-- Bytes: `b"..."`, byte literals `0x2A`.
+- UTF‑8 strings: `"..."` (cooked) and `r"..."` (raw).
+- Bytes: `b"..."` (cooked bytes), byte literals `0x2A`.
+- C strings: `c"..."` (cooked UTF‑8, NUL-terminated).
 - Rune/char: `'a'`, `'\n'` (Unicode scalar value).
 
 ## 2. Program Structure (Normative)
@@ -187,6 +188,14 @@ Rules (normative):
 Notes:
 - References (`&T`, `&mut T`) are intentionally **not** part of the v1.0 core language. APIs use `Ptr[T]` and `Slice[T]`.
 
+### 3.4 String and byte slice aliases (Normative)
+Lumen is freestanding-first, so core v1.0 uses slice-based string types rather than allocating `String` types.
+
+Aliases (normative):
+- `Bytes` := `Slice[U8]` (arbitrary bytes)
+- `Str` := `Slice[U8]` with the invariant that the bytes form valid UTF‑8
+- `CStr` := `Ptr[U8]` with the invariant that it points to a NUL-terminated byte sequence (a C string)
+
 ## 4. Safety Model (Normative)
 
 ### 4.1 The safety contract
@@ -281,6 +290,53 @@ Rules (normative):
   - every field not explicitly listed is taken from `base`.
   - `.. base` must appear at most once and must be the last field initializer in the literal.
 - Field initializers evaluate left-to-right as written. If `.. base` is present, `base` evaluates after all explicit field initializers.
+
+### 6.3.4 String, bytes, and C string literals (Normative)
+Lumen source files are UTF‑8 (§1.1). String and byte literals are immutable and stored in static read-only memory for the lifetime of the program.
+
+Token kinds and codecs (normative surface contract):
+- `"..."` (StringLit) decodes as `core.utf8.cooked`
+- `r"..."` (RawStringLit) decodes as `core.utf8.raw`
+- `b"..."` (BytesLit) decodes as `core.bytes.cooked`
+- `c"..."` (CStringLit) decodes as `core.cstr.cooked_nul`
+
+#### 6.3.4.1 Cooked UTF‑8 strings: `"..."` (`core.utf8.cooked`)
+- The literal contents are a sequence of Unicode scalar values produced by interpreting escape sequences.
+- The resulting scalar sequence is encoded as UTF‑8 bytes.
+- The expression has type `Str` (a UTF‑8 slice).
+
+Recognized escapes (normative):
+- `\\n` (LF, U+000A), `\\r` (CR, U+000D), `\\t` (TAB, U+0009), `\\\\` (backslash), `\\\"` (double quote)
+- `\\0` (NUL, U+0000)
+- `\\u{HEX}` where `HEX` is 1..6 hex digits denoting a Unicode scalar value
+
+Invalid escapes are a compile-time error.
+
+#### 6.3.4.2 Raw UTF‑8 strings: `r"..."` (`core.utf8.raw`)
+- No escape sequences are processed.
+- The literal contents are interpreted as Unicode scalar values as written in the source file.
+- The scalar sequence is encoded as UTF‑8 bytes.
+- The expression has type `Str`.
+
+#### 6.3.4.3 Cooked bytes: `b"..."` (`core.bytes.cooked`)
+- The literal contents decode to a sequence of bytes.
+- The expression has type `Bytes`.
+
+Recognized escapes (normative):
+- `\\n` (0x0A), `\\r` (0x0D), `\\t` (0x09), `\\\\` (0x5C), `\\\"` (0x22)
+- `\\0` (0x00)
+- `\\xNN` where `NN` are exactly 2 hex digits (byte value 0..255)
+
+All non-escaped characters in a `b"..."` literal must be ASCII (codepoint 0x20..0x7E) excluding `"` and `\\`. Otherwise it is a compile-time error.
+
+#### 6.3.4.4 Cooked C strings: `c"..."` (`core.cstr.cooked_nul`)
+- Decode as cooked UTF‑8 (as in `"..."`), then encode to UTF‑8 bytes.
+- The resulting bytes must not contain `0` (NUL) except for the implicit terminator.
+- An implicit trailing NUL byte is appended.
+- The expression has type `CStr`.
+
+FFI note (normative):
+- `c"..."` is intended for `extern "C"` APIs expecting a C string (`CStr`/`Ptr[U8]`). It does not allocate.
 
 ### 6.3.0 No implicit numeric conversions
 - There are no implicit numeric promotions or conversions.
