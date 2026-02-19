@@ -1,0 +1,8 @@
+mod util { pub fn add() -> I32 { 1 } }
+
+use util::add;
+use util::add; // OK: same symbol
+
+pub fn main() -> i32 {
+    add()
+}

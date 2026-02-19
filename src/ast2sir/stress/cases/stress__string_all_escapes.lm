@@ -1,0 +1,4 @@
+pub fn main() -> i32 {
+let s = "a\tb\nc\r\"d\'e\\f";
+0
+}

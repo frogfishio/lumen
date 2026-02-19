@@ -1,0 +1,5 @@
+pub fn main() -> i32 {
+    let x = 10;
+    let (x, y) = (20, 30); // Should shadow x with pattern
+    x + y
+}

@@ -1,0 +1,15 @@
+trait T {
+fn method(&self) -> i32;
+}
+
+struct S {}
+
+impl T for S {
+fn method(&self) -> i32 {
+42
+}
+}
+
+pub fn main() -> i32 {
+0
+}

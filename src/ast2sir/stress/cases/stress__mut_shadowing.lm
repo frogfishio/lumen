@@ -1,0 +1,5 @@
+pub fn main() -> i32 {
+    let mut x = 10;
+    let x = 20; // Immutable shadow of mutable
+    x
+}

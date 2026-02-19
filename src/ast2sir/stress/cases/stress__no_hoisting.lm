@@ -1,0 +1,7 @@
+pub fn main() -> i32 {
+    {
+        let x = 10;
+        x // x is accessible here
+    }
+    // x is not accessible here
+}

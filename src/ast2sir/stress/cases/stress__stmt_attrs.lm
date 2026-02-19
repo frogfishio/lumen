@@ -1,0 +1,5 @@
+pub fn main() -> i32 {
+    @some_attr
+    let x = 42;
+    x
+}

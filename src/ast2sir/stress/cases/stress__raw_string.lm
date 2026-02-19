@@ -1,0 +1,4 @@
+pub fn main() -> i32 {
+let s = r"no \n escapes";
+0
+}

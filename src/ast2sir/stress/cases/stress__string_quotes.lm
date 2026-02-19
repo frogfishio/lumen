@@ -1,0 +1,4 @@
+pub fn main() -> i32 {
+let s = "he said \"hi\"";
+0
+}

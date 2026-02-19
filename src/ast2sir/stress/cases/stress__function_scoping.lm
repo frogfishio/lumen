@@ -1,0 +1,9 @@
+fn inner() -> i32 {
+    let x = 10;
+    x
+}
+
+pub fn main() -> i32 {
+    let x = 20; // Different x
+    inner() + x // 10 + 20 = 30
+}

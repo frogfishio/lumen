@@ -1,0 +1,9 @@
+mod util { pub fn add() -> I32 { 1 } }
+mod math { pub fn add() -> I32 { 2 } }
+
+use util::add;
+use math::add; // Should error: add already bound
+
+pub fn main() -> i32 {
+    add()
+}

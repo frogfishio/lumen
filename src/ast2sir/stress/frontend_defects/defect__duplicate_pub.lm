@@ -1,0 +1,8 @@
+mod m {
+    pub fn f() -> I32 { 1 }
+    pub fn f() -> I32 { 2 } // Should error: duplicate public export
+}
+
+pub fn main() -> i32 {
+    0
+}

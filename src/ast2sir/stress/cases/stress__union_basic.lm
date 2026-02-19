@@ -1,0 +1,8 @@
+union U {
+x: i32,
+y: f64,
+}
+
+pub fn main() -> i32 {
+0
+}
