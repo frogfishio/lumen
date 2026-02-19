@@ -1,0 +1,12 @@
+fn factorial(n: I32) -> I32 {
+    if n <= 1 {
+        1 as I32
+    } else {
+        n * factorial(n - 1 as I32)
+    }
+}
+
+fn main() {
+    let res = factorial(5 as I32);
+    let _ = res;
+}

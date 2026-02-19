@@ -1,0 +1,8 @@
+fn main() {
+    let a = 1 as I32;
+    let b = 2 as I32;
+    let c = 3 as I32;
+    let d = 4 as I32;
+    let result = (a + b) * c - d / 2 + (a & b) | (c ^ d) << 1 >> 2;
+    let _ = result;
+}

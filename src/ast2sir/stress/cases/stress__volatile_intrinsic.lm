@@ -1,0 +1,9 @@
+static mut x: i32 = 0;
+
+pub fn main() -> i32 {
+    unsafe {
+        @volatile *x = 1;
+        @volatile let y = *x;
+        y
+    }
+}

@@ -1,0 +1,6 @@
+fn main() {
+    let t = (1 as I32, (2 as I32, 3 as I32), 4 as I32);
+    let (a, (b, c), d) = t;
+    let sum = a + b + c + d;
+    let _ = sum;
+}

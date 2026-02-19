@@ -1,0 +1,8 @@
+@repr(C)
+@align(16)
+@no_mangle
+extern "C" fn multi_attr_func() {}
+
+fn main() {
+    // call it
+}

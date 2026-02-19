@@ -1,0 +1,14 @@
+fn main() {
+    let x = 5 as I32;
+    let y = 10 as I32;
+    match (x, y) {
+        (0, _) => {},
+        (_, 0) => {},
+        (a, b) if a > b => {
+            let _ = a - b;
+        }
+        (a, b) => {
+            let _ = b - a;
+        }
+    }
+}

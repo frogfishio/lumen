@@ -1,0 +1,14 @@
+trait SimpleTrait {
+    fn method(self);
+}
+
+impl SimpleTrait for I32 {
+    fn method(self) {
+        let _ = self;
+    }
+}
+
+fn main() {
+    let x = 42 as I32;
+    x.method();
+}

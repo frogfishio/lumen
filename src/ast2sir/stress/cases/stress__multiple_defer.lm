@@ -1,0 +1,13 @@
+fn main() {
+    defer {
+        // first defer
+    };
+    {
+        defer {
+            // second defer
+        };
+    }
+    defer {
+        // third defer
+    };
+}

@@ -1,0 +1,6 @@
+pub fn main() -> i32 {
+    let s1 = "hello";
+    let s2 = "world";
+    let combined = s1; // no concat, just assign
+    0
+}

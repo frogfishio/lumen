@@ -1,0 +1,11 @@
+fn test() -> I32 {
+    if true {
+        return 1 as I32;
+    }
+    0 as I32
+}
+
+fn main() {
+    let res = test();
+    let _ = res;
+}

@@ -1,0 +1,8 @@
+extern "C" fn printf(format: Ptr[U8], ...) -> I32;
+
+fn main() {
+    unsafe {
+        let res = printf(b"Hello %d %s\n\0" as Ptr[U8], 42 as I32, b"world\0" as Ptr[U8]);
+        let _ = res;
+    }
+}

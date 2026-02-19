@@ -1,0 +1,6 @@
+pub fn main() -> i32 {
+    defer {
+        // deferred code
+    }
+    0
+}

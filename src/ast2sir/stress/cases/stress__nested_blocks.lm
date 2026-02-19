@@ -1,0 +1,11 @@
+fn main() {
+    let outer = 1 as I32;
+    {
+        let inner = 2 as I32;
+        {
+            let innermost = outer + inner;
+            let _ = innermost;
+        }
+    }
+    let _ = outer;
+}

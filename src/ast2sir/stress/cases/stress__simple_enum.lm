@@ -1,0 +1,14 @@
+enum Simple {
+    A,
+    B,
+    C,
+}
+
+fn main() {
+    let e = Simple::A;
+    match e {
+        Simple::A => {},
+        Simple::B => {},
+        Simple::C => {},
+    }
+}

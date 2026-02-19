@@ -1,0 +1,15 @@
+trait Add {
+    fn add(self, other: I32) -> I32;
+}
+
+impl Add for I32 {
+    fn add(self, other: I32) -> I32 {
+        self + other
+    }
+}
+
+fn main() {
+    let x = 5 as I32;
+    let y = x.add(3 as I32);
+    let _ = y;
+}

@@ -1,0 +1,6 @@
+fn main() {
+    let dec = 42 as I32;
+    let hex = 0x2A as I32;
+    let bin = 0b101010 as I32;
+    let _ = dec + hex + bin;
+}

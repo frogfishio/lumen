@@ -1,0 +1,11 @@
+struct Point {
+    x: I32,
+    y: I32,
+}
+
+fn main() {
+    let p1 = Point { x: 1 as I32, y: 2 as I32 };
+    let p2 = Point { x: 10 as I32, ..p1 };
+    let _ = p2.x;
+    let _ = p2.y;
+}

@@ -1,0 +1,15 @@
+fn main() {
+    let mut i = 0 as I32;
+    while i < 10 {
+        defer {
+            i = i + 1;
+        };
+        if i == 5 {
+            continue;
+        }
+        if i == 8 {
+            break;
+        }
+        let _ = i;
+    }
+}

@@ -13,8 +13,8 @@ fn main() {
             let back = casted as I32;
             sum = back * 2;
 
-            core::intrinsics::volatileStore(&VOLATILE_VAR, sum);
-            let loaded = core::intrinsics::volatileLoad(&VOLATILE_VAR);
+            VOLATILE_VAR = sum;
+            let loaded = VOLATILE_VAR;
 
             let _ = loaded;
         }
