@@ -1,0 +1,40 @@
+extern "C" fn malloc(size: Usize) -> Ptr[U8];
+extern "C" fn free(ptr: Ptr[U8]);
+
+struct Container {
+    ptr: Ptr[I32],
+}
+
+fn new_container(value: I32) -> Container {
+    unsafe {
+        let ptr = malloc(4 as Usize) as Ptr[I32];
+        *ptr = value;
+        Container { ptr }
+    }
+}
+
+fn get_container(c: Container) -> I32 {
+    unsafe { *c.ptr }
+}
+
+fn process_container(c: Container) -> I32 {
+    unsafe {
+        defer {
+            if c.ptr != (0 as Ptr[I32]) {
+                free(c.ptr as Ptr[U8]);
+            }
+        };
+
+        let val = get_container(c);
+        match val {
+            0 => 0,
+            _ => val + 1
+        }
+    }
+}
+
+fn main() {
+    let c = new_container(42 as I32);
+    let res = process_container(c);
+    let _ = res;
+}
