@@ -1,0 +1,17 @@
+// Stress: match over a unit variant (None) + match-as-expression typing.
+// Note: we avoid user-defined enums here because the current strict AST output
+// drops enum variants after the first (frontend defect), which makes this an
+// unreliable backend stressor.
+
+fn f(o: Option[I32]) -> I32 {
+  let y: I32 = match o {
+    None => 1,
+    Some(_) => 2,
+  };
+  y
+}
+
+fn main() {
+  let o: Option[I32] = None;
+  let _: I32 = f(o);
+}

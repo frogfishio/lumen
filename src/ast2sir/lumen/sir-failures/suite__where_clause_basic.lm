@@ -1,0 +1,15 @@
+trait Inc {
+  fn inc(x: Self) -> Self;
+}
+
+impl Inc for I32 {
+  fn inc(x: I32) -> I32 { x + (1 as I32) }
+}
+
+fn bump[T](x: T) -> T where T: Inc {
+  Inc.inc(x)
+}
+
+fn main() {
+  let _ = bump(1 as I32);
+}

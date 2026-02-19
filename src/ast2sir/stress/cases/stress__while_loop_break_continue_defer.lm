@@ -1,0 +1,29 @@
+// Stress: while/loop + break/continue + defer emission on loop exits.
+
+fn main() {
+  let mut i: I32 = 0 as I32;
+  let mut acc: I32 = 0 as I32;
+
+  while i < (3 as I32) {
+    defer { acc = acc + (100 as I32); }
+
+    i = i + (1 as I32);
+
+    if i == (1 as I32) {
+      continue;
+    }
+
+    if i == (2 as I32) {
+      break;
+    }
+
+    acc = acc + i;
+  }
+
+  loop {
+    defer { acc = acc + (1 as I32); }
+    break;
+  }
+
+  let _ = acc;
+}

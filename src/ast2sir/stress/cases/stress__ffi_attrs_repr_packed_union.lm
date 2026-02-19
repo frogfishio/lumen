@@ -1,0 +1,39 @@
+// Stress: attributes + linkage + repr/align + union field access.
+
+@no_mangle
+@visibility("default")
+pub extern "C" unsafe fn exported() -> I32 {
+  0 as I32
+}
+
+@link_name("renamed_symbol")
+extern "C" unsafe fn imported() -> I32;
+
+@repr(transparent)
+struct Wrapper { x: U32 }
+
+@repr(packed)
+@align(1)
+struct Packed { a: U8, b: U32 }
+
+@repr(C)
+union U {
+  a: U32,
+  b: [U8; 4]
+}
+
+fn main() {
+  let _w = Wrapper { x: 1 as U32 };
+
+  unsafe {
+    let _ = exported();
+    let _ = imported();
+
+    let p: Packed = Packed { a: 1 as U8, b: 2 as U32 };
+    let _ = p.b;
+
+    let mut u: U = U { a: 0 as U32 };
+    u.a = 42 as U32;
+    let _x = u.b;
+  }
+}

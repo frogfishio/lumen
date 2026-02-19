@@ -1,0 +1,7 @@
+static X: U32 = 123 as U32;
+static P: Ptr[U8] = unsafe { (0 as Usize) as Ptr[U8] };
+
+fn main() {
+  let _ = X;
+  let _ = P;
+}

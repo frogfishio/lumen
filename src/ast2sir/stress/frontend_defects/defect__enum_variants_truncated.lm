@@ -1,0 +1,24 @@
+// Frontend defect repro: strict AST drops enum variants after the first.
+//
+// Observed symptom:
+// - `enum E { A, B }` compiles, but the strict AST only contains variant `A`.
+// - Downstream, ast2sir fails with: unknown ctor 'B' for sum 'E'
+//
+// Keep this file out of the backend stress suite until the frontend is fixed.
+
+enum E {
+  A,
+  B
+}
+
+fn f(e: E) -> I32 {
+  match e {
+    A => 1,
+    B => 2,
+  }
+}
+
+fn main() {
+  let e: E = B;
+  let _: I32 = f(e);
+}

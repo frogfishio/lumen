@@ -1,0 +1,12 @@
+fn main() {
+  let x: I32 = -1 as I32;
+  let y: U32 = x as U32;
+  let _ = y;
+
+  let p: Ptr[U8] = unsafe { (0 as Usize) as Ptr[U8] };
+  unsafe {
+    let q: Ptr[U8] = p + (1 as Int);
+    let _d: Isize = q - p;
+    let _ = _d;
+  }
+}

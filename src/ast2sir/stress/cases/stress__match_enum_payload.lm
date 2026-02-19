@@ -1,0 +1,15 @@
+// Stress: wrapped sum lowering + match (payload + binder) + thunk path.
+// We use Option[T] here (synthesized by ast2sir) to avoid relying on frontend enum payload variants.
+
+fn f(o: Option[I32]) -> I32 {
+  match o {
+    None => 10,
+    Some(x) => x,
+  }
+}
+
+fn main() {
+  let o: Option[I32] = Some(33);
+  let r: I32 = f(o);
+  let _: I32 = r;
+}

@@ -1,0 +1,17 @@
+// Stress: for-in lowering over local array and local slice.
+// Note: ast2sir currently only supports `for x in <Name>` where <Name> is a local array/slice.
+
+fn main() {
+  let arr: [I32; 4] = [1, 2, 3, 4];
+
+  // for-in over array
+  for x in arr {
+    let _: I32 = x;
+  }
+
+  // Make a slice view and iterate it too.
+  let s: Slice[I32] = Slice { ptr: arr[0], len: 4 };
+  for y in s {
+    let _: I32 = y;
+  }
+}

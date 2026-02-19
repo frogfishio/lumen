@@ -1,0 +1,13 @@
+{
+  "tool": "gritc",
+  "version": "grit0.1.0-362-g9f7bb1e-dirty",
+  "pack": "./packs/lumen.pack.json",
+  "start": "",
+  "sources": [
+    "./hello.lm"
+  ],
+  "asts": [
+    {"source": "./hello.lm", "ast": "out/gritc/0000.hello.ast.json"}
+  ],
+  "modules": "out/gritc/modules.json"
+}

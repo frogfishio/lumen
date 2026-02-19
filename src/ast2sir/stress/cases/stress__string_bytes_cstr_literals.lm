@@ -1,0 +1,16 @@
+// Stress: cooked/raw UTF-8 strings + bytes literals + CStr literal + extern call.
+
+extern "C" unsafe fn puts(s: Ptr[U8]) -> I32;
+
+fn main() {
+  unsafe {
+    let _cooked: String = "hello from cooked string\n";
+    let _raw: String = r"hello from raw string\\n";
+
+    let bytes: Ptr[U8] = (b"hello from bytes\n\0" as Ptr[U8]);
+    let _rc_bytes: I32 = puts(bytes);
+
+    let cstr: Ptr[U8] = (c"hello from cstr\n" as Ptr[U8]);
+    let _rc_cstr: I32 = puts(cstr);
+  }
+}

@@ -1,0 +1,8 @@
+fn main() {
+  let mut x: I32 = 0 as I32;
+  {
+    defer { x = x + (1 as I32); }
+    if true { x = x + (10 as I32); } else { x = x + (20 as I32); }
+  }
+  let _ = x;
+}

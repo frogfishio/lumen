@@ -1,0 +1,10 @@
+// Local extra conformance fixture (not part of the upstream suite):
+// Minimal libc hello-world using the CStr literal surface form.
+
+extern "C" unsafe fn puts(s: CStr) -> I32;
+
+fn main() {
+  unsafe {
+    let _rc = puts(c"hello world\n");
+  }
+}
