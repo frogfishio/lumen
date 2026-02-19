@@ -1,0 +1,8 @@
+pub fn main() -> i32 {
+    let arr = [10, 20, 30];
+    let mut sum = 0;
+    for x in arr {
+        sum = sum + x;
+    }
+    sum
+}

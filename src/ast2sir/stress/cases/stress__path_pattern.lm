@@ -1,0 +1,14 @@
+mod math {
+    pub enum Result {
+        Ok(I32),
+        Err,
+    }
+}
+
+pub fn main() -> i32 {
+    let r = math::Result::Ok(42);
+    match r {
+        math::Result::Ok(x) => x,
+        math::Result::Err => 0,
+    }
+}

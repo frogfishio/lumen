@@ -1,0 +1,7 @@
+macro println {
+    // macro body
+}
+
+pub fn main() -> i32 {
+    0
+}

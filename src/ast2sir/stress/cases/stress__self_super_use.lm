@@ -1,0 +1,9 @@
+mod inner {
+    pub fn func() -> i32 { 42 }
+}
+
+use self::inner::func;
+
+pub fn main() -> i32 {
+    func()
+}

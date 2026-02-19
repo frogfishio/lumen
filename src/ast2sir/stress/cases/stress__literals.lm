@@ -1,0 +1,11 @@
+pub fn main() -> i32 {
+    let i = 42;
+    let h = 0x2A;
+    let b = 0b101010;
+    let f = 3.14;
+    let s = "hello";
+    let c = 'a';
+    let t = true;
+    let f = false;
+    i
+}

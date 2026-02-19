@@ -1,0 +1,5 @@
+type MyInt = I32;
+
+pub fn main() -> MyInt {
+    42 as MyInt
+}

@@ -1,0 +1,4 @@
+pub fn main() -> i32 {
+    let f = 0x1.0p1;
+    0
+}

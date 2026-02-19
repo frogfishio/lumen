@@ -1,0 +1,8 @@
+pub fn main() -> i32 {
+    let x = 42;
+    let y = 0;
+    unsafe {
+        asm!("mov %1, %0" : "=r"(y) : "r"(x));
+    }
+    y
+}

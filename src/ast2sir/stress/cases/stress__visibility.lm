@@ -1,0 +1,8 @@
+mod inner {
+    pub fn public_func() -> i32 { 42 }
+    fn private_func() -> i32 { 24 }
+}
+
+pub fn main() -> i32 {
+    inner::public_func()
+}

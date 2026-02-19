@@ -1,0 +1,23 @@
+pub fn main() -> i32 {
+    let a = 10 as I32;
+    let b = 3 as I32;
+    let add = a + b;
+    let sub = a - b;
+    let mul = a * b;
+    let div = a / b;
+    let rem = a % b;
+    let eq = a == b;
+    let ne = a != b;
+    let lt = a < b;
+    let le = a <= b;
+    let gt = a > b;
+    let ge = a >= b;
+    let and = true && false;
+    let or = true || false;
+    let bitand = a & b;
+    let bitor = a | b;
+    let bitxor = a ^ b;
+    let shl = a << 1;
+    let shr = a >> 1;
+    add
+}

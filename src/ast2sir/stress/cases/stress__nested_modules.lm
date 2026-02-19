@@ -1,0 +1,9 @@
+mod outer {
+    mod inner {
+        pub fn func() -> i32 { 42 }
+    }
+}
+
+pub fn main() -> i32 {
+    outer::inner::func()
+}

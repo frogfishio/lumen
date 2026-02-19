@@ -1,0 +1,9 @@
+struct Point {
+    x: I32,
+    y: I32,
+}
+
+pub fn main() -> i32 {
+    let p = Point { x: 10, y: 20 };
+    p.x + p.y
+}

@@ -1,0 +1,9 @@
+pub fn main() -> i32 {
+    let mut i = 0;
+    loop {
+        if i >= 5 {
+            break i;
+        }
+        i = i + 1;
+    }
+}

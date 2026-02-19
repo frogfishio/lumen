@@ -1,0 +1,19 @@
+struct Counter {
+    value: I32,
+}
+
+impl Counter {
+    fn new() -> Counter {
+        Counter { value: 0 }
+    }
+
+    fn inc(&mut self) {
+        self.value = self.value + 1;
+    }
+}
+
+pub fn main() -> i32 {
+    let mut c = Counter::new();
+    c.inc();
+    c.value
+}

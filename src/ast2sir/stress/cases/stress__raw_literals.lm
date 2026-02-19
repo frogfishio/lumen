@@ -1,0 +1,6 @@
+pub fn main() -> i32 {
+    let raw = r"raw string";
+    let bytes = b"bytes";
+    let cstr = c"c string";
+    0
+}
