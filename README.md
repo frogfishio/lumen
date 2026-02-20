@@ -4,7 +4,7 @@ Not better Rust. Not better Zig. Not better C.
 
 Lumen is what K&R might have written if they started C today.
 
-- Still manual memory (zi_alloc / zi_free)  
+- Still manual memory 
 - Still raw pointers & unsafe blocks  
 - Still extern "C" interop  
 - But with blocks, defer, match, shadowing, explicit unsafe, generics (optional), traits (optional), verifiable IR (SIR), deterministic execution, capability safety
