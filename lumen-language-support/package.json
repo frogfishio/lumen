@@ -1,8 +1,9 @@
 {
   "name": "lumen-language-support",
   "displayName": "Lumen Language Support",
-  "description": "Language support for Lumen",
-  "version": "0.0.1",
+  "description": "Syntax highlighting, snippets, and editor configuration for the Lumen programming language",
+  "version": "0.1.0",
+  "publisher": "lumen-lang",
   "engines": {
     "vscode": "^1.109.0"
   },
@@ -20,6 +21,12 @@
       "language": "lumen",
       "scopeName": "source.lumen",
       "path": "./syntaxes/lumen.tmLanguage.json"
-    }]
+    }],
+    "snippets": [
+      {
+        "language": "lumen",
+        "path": "./snippets/lumen.json"
+      }
+    ]
   }
 }

@@ -1,0 +1,176 @@
+{
+  "fn": {
+    "prefix": ["fn"],
+    "body": [
+      "fn ${1:name}(${2})${3: -> ${4:Type}} {",
+      "  $0",
+      "}"
+    ],
+    "description": "Function declaration"
+  },
+  "unsafe fn": {
+    "prefix": ["unsafe fn"],
+    "body": [
+      "unsafe fn ${1:name}(${2})${3: -> ${4:Type}} {",
+      "  $0",
+      "}"
+    ],
+    "description": "Unsafe function declaration"
+  },
+  "extern C fn (decl)": {
+    "prefix": ["extern"],
+    "body": [
+      "extern \"C\" ${1:unsafe }fn ${2:name}(${3})${4: -> ${5:Type}};"
+    ],
+    "description": "Extern function declaration (C ABI)"
+  },
+  "struct": {
+    "prefix": ["struct"],
+    "body": [
+      "struct ${1:Name} {",
+      "  ${2:field}: ${3:Type},",
+      "}"
+    ],
+    "description": "Struct declaration"
+  },
+  "enum": {
+    "prefix": ["enum"],
+    "body": [
+      "enum ${1:Name} {",
+      "  ${2:Variant},",
+      "}"
+    ],
+    "description": "Enum declaration"
+  },
+  "trait": {
+    "prefix": ["trait"],
+    "body": [
+      "trait ${1:Name} {",
+      "  fn ${2:method}(${3})${4: -> ${5:Type}};",
+      "}"
+    ],
+    "description": "Trait declaration"
+  },
+  "impl": {
+    "prefix": ["impl"],
+    "body": [
+      "impl ${1:Type} {",
+      "  $0",
+      "}"
+    ],
+    "description": "Impl block"
+  },
+  "let": {
+    "prefix": ["let"],
+    "body": ["let ${1:name} = $0"],
+    "description": "Let binding"
+  },
+  "let mut": {
+    "prefix": ["let mut"],
+    "body": ["let mut ${1:name} = $0"],
+    "description": "Mutable let binding"
+  },
+  "if": {
+    "prefix": ["if"],
+    "body": [
+      "if ${1:cond} {",
+      "  $0",
+      "}"
+    ],
+    "description": "If expression"
+  },
+  "if else": {
+    "prefix": ["ifelse"],
+    "body": [
+      "if ${1:cond} {",
+      "  ${2:then}",
+      "} else {",
+      "  $0",
+      "}"
+    ],
+    "description": "If/else expression"
+  },
+  "match": {
+    "prefix": ["match"],
+    "body": [
+      "match ${1:value} {",
+      "  ${2:pattern} => ${3:expr}",
+      "}"
+    ],
+    "description": "Match expression"
+  },
+  "for in": {
+    "prefix": ["for"],
+    "body": [
+      "for ${1:item} in ${2:iter} {",
+      "  $0",
+      "}"
+    ],
+    "description": "For-in loop"
+  },
+  "while": {
+    "prefix": ["while"],
+    "body": [
+      "while ${1:cond} {",
+      "  $0",
+      "}"
+    ],
+    "description": "While loop"
+  },
+  "loop": {
+    "prefix": ["loop"],
+    "body": [
+      "loop {",
+      "  $0",
+      "}"
+    ],
+    "description": "Infinite loop"
+  },
+  "defer": {
+    "prefix": ["defer"],
+    "body": ["defer { $0 }"] ,
+    "description": "Defer (scope-exit)"
+  },
+  "test": {
+    "prefix": ["test"],
+    "body": [
+      "test \"${1:name}\" {",
+      "  $0",
+      "}"
+    ],
+    "description": "Test item"
+  },
+  "macro": {
+    "prefix": ["macro"],
+    "body": [
+      "macro ${1:name} {",
+      "  $0",
+      "}"
+    ],
+    "description": "Macro item"
+  },
+  "use": {
+    "prefix": ["use"],
+    "body": ["use ${1:path};"],
+    "description": "Use/import"
+  },
+  "use group": {
+    "prefix": ["use{"],
+    "body": ["use ${1:module}::{${2:item1}, ${3:item2}};"],
+    "description": "Grouped use/import"
+  },
+  "mod": {
+    "prefix": ["mod"],
+    "body": [
+      "mod ${1:name} {",
+      "  $0",
+      "}"
+    ],
+    "description": "Inline module"
+  },
+  "@repr(C)": {
+    "prefix": ["@repr"],
+    "body": ["@repr(${1:C})"],
+    "description": "FFI representation attribute"
+  }
+}

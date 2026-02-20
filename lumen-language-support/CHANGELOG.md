@@ -6,4 +6,10 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+- TBD
+
+## [0.1.0]
+
+- Expanded syntax highlighting to match current Lumen surface syntax (keywords, attributes, literals, paths, declarations).
+- Improved editor configuration (indentation rules, word pattern, folding region markers, smarter auto-closing pairs).
+- Added a starter set of Lumen snippets.
