@@ -1,4 +1,0 @@
-mod main;
-
-fn main() -> I32 {
-}

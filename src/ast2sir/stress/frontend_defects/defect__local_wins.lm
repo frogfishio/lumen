@@ -1,8 +1,0 @@
-mod util { pub fn log() -> I32 { 1 } }
-
-fn log() -> I32 { 0 }
-use util::log; // Should error: conflicts with local
-
-pub fn main() -> i32 {
-    log()
-}

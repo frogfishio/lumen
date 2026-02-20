@@ -1,9 +1,0 @@
-enum E { A, B }
-
-fn main() {
-  let e: E = A;
-  match e {
-    A if true => 1,
-    B if true => 2,
-  };
-}

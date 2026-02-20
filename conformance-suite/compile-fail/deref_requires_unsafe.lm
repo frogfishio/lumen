@@ -1,5 +1,0 @@
-fn main() {
-  let x: I32 = 1;
-  let p = &x;
-  let _y = *p;
-}

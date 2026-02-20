@@ -1,3 +1,0 @@
-fn main() {
-  let super = 1 as I32;
-}

@@ -1,0 +1,12 @@
+[package]
+name = "app"
+version = "0.1.0"
+dialect = "lumen/1.0.0"
+
+[source]
+root = "src"
+
+[dependencies]
+lumen = { version = "0.1.0" }
+hello = { version = "0.1.0" }
+

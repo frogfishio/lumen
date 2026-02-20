@@ -1,9 +1,0 @@
-pub fn main() -> i32 {
-    let x = 10;
-    match 5 {
-        y => {
-            let x = 20; // Shadows in match arm
-            x + y
-        }
-    } + x // Outer x still accessible
-}

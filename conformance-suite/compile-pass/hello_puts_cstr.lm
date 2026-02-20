@@ -1,7 +1,0 @@
-extern "C" unsafe fn puts(s: CStr) -> I32;
-
-fn main() {
-  unsafe {
-    let _ = puts(c"Hello, world!");
-  }
-}

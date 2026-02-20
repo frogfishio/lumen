@@ -1,0 +1,8 @@
+fn main() {
+  let x: I32 = if 0 as I32 == 0 as I32 {
+    111 as I32
+  } else {
+    222 as I32
+  };
+  x
+}

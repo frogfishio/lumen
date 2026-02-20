@@ -1,4 +1,0 @@
-fn main() {
-  let p: Ptr[U8] = unsafe { (0 as Usize) as Ptr[U8] };
-  let _q: Ptr[U8] = p + (1 as Int);
-}

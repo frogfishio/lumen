@@ -1,8 +1,0 @@
-fn main() {
-  unsafe {
-    let _x: Void = asm("",
-      options("noreturn", "volatile"),
-      clobber("memory"),
-    );
-  }
-}

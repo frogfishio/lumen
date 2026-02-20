@@ -1,6 +1,0 @@
-struct Foo { x: I32 }
-fn Foo() -> I32 { 1 }
-
-pub fn main() -> i32 {
-    0
-}

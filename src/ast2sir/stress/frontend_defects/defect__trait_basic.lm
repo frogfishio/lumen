@@ -1,7 +1,0 @@
-trait T {
-fn method(&self) -> i32;
-}
-
-pub fn main() -> i32 {
-0
-}

@@ -1,7 +1,0 @@
-@repr(packed)
-struct Packed { a: U8, b: U32 }
-
-fn main() {
-  let p: Packed = Packed { a: 1 as U8, b: 2 as U32 };
-  let _ = p.b;
-}

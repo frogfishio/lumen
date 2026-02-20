@@ -1,0 +1,8 @@
+pub fn main() -> i32 {
+    let x = 10;
+    {
+        let y = 20;
+        let x = 30; // Shadows outer x
+        x + y // 30 + 20 = 50
+    } + x // 50 + 10 = 60
+}

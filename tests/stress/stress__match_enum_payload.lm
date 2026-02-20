@@ -1,0 +1,21 @@
+// Stress: wrapped sum lowering + match (payload + binder) + thunk path.
+// Self-contained: define Option[T] locally (no implicit prelude).
+
+enum OptionI32 {
+  Some(I32),
+  None
+}
+
+fn f(o: OptionI32) -> I32 {
+  let oo: OptionI32 = o;
+  match oo {
+    None => 10,
+    Some(x) => x,
+  }
+}
+
+fn main() {
+  let o: OptionI32 = Some(33);
+  let r: I32 = f(o);
+  let _: I32 = r;
+}

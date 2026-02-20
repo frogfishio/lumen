@@ -1,0 +1,22 @@
+enum ResultI32I32 {
+  Ok(I32),
+  Err
+}
+
+fn ok() -> ResultI32I32 {
+  Ok(1 as I32)
+}
+
+fn f() -> ResultI32I32 {
+  let x: I32 = try ok();
+  Ok(x + (1 as I32))
+}
+
+fn main() {
+  let r: ResultI32I32 = ok();
+  let _seed: I32 = match r {
+    Ok(_v) => 0 as I32,
+    Err => 0 as I32,
+  };
+  let _ = f();
+}

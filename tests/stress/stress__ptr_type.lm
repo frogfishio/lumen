@@ -1,0 +1,5 @@
+pub fn main() -> I32 {
+    let arr: [I32; 1] = [42];
+    let p: Ptr[I32] = arr[0];
+    unsafe { *p }
+}

@@ -1,7 +1,0 @@
-const SIZE: I32 = 10 as I32;
-const DOUBLE: I32 = SIZE * 2;
-
-fn main() {
-    let arr = [0 as I32; 10];
-    let _ = arr[DOUBLE as Usize];
-}

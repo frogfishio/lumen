@@ -1,7 +1,0 @@
-fn generic[T]() where T: Add[T, Output = T] {
-    // function with where clause
-}
-
-pub fn main() -> i32 {
-    0
-}

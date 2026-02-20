@@ -1,0 +1,16 @@
+@no_mangle
+extern "C" fn complex_func(a: I32, b: I32, c: Ptr[U8]) -> I32 {
+    a + b
+}
+
+@no_mangle
+extern "C" fn lumen_func(x: I32) -> I32 {
+    x * 2
+}
+
+fn main() {
+    unsafe {
+        let res = complex_func(1 as I32, 2 as I32, b"test" as Ptr[U8]);
+        let _ = res;
+    }
+}

@@ -1,0 +1,21 @@
+// Stress: match over a unit variant (None) + match-as-expression typing.
+// Self-contained: define Option[T] locally (no implicit prelude).
+
+enum OptionI32 {
+  Some(I32),
+  None
+}
+
+fn f(o: OptionI32) -> I32 {
+  let oo: OptionI32 = o;
+  let y: I32 = match oo {
+    None => 1,
+    Some(_) => 2,
+  };
+  y
+}
+
+fn main() {
+  let o: OptionI32 = None;
+  let _: I32 = f(o);
+}

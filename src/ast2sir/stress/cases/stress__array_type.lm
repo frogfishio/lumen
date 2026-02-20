@@ -1,5 +1,0 @@
-type ArrType = [I32; 10];
-
-pub fn main() -> i32 {
-    0
-}

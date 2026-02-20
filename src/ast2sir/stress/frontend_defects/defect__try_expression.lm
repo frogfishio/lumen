@@ -1,5 +1,0 @@
-pub fn main() -> Result<i32, ()> {
-    try {
-        Ok(0)
-    }
-}

@@ -1,0 +1,12 @@
+enum OptionI32 {
+  Some(I32),
+  None
+}
+
+fn main() {
+  let x: OptionI32 = Some(1 as I32);
+  let _y: I32 = match x {
+    Some(v) => v,
+    None => 0 as I32,
+  };
+}

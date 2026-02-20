@@ -1,0 +1,7 @@
+static GLOBAL: I32 = 42 as I32;
+const CONSTANT: I32 = 100 as I32;
+
+fn main() {
+    let local = GLOBAL + CONSTANT;
+    let _ = local;
+}

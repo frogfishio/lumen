@@ -1,0 +1,12 @@
+mod lumen;
+
+pub enum Option[T] {
+  Some(T),
+  None
+}
+
+pub enum Result[T, E] {
+  Ok(T),
+  Err(E)
+}
+

@@ -1,6 +1,0 @@
-fn add2(x: I32, y: I32) -> I32 { x + y }
-
-fn main() {
-  let z: I32 = add2(y: 2 as I32, x: 1 as I32);
-  let _ = z;
-}

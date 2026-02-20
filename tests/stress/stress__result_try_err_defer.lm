@@ -1,0 +1,28 @@
+// Stress: Result[T,E] + try + Err path + defer interaction.
+
+enum ResultI32I32 {
+  Ok(I32),
+  Err(I32)
+}
+
+fn ok(x: I32) -> ResultI32I32 {
+  if x == 0 as I32 {
+    Err(7 as I32)
+  } else {
+    Ok(x)
+  }
+}
+
+fn f() -> ResultI32I32 {
+  let mut acc: I32 = 0 as I32;
+  defer { acc = acc + (1 as I32); }
+
+  let a: I32 = try ok(1 as I32);
+  let b: I32 = try ok(0 as I32);
+
+  Ok(a + b + acc)
+}
+
+fn main() {
+  let _ = f();
+}

@@ -1,9 +1,0 @@
-mod util { pub fn f() -> I32 { 1 } }
-mod other { pub mod util { pub fn g() -> I32 { 2 } } }
-
-use util;
-use other::util; // Should error: util already bound
-
-pub fn main() -> i32 {
-    0
-}

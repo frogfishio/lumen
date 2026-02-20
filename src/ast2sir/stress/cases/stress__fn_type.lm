@@ -1,5 +1,0 @@
-type FnType = fn(I32, I32) -> I32;
-
-pub fn main() -> i32 {
-    0
-}

@@ -1,9 +1,0 @@
-pub fn main() -> i32 {
-    let x = 10;
-    let mut sum = 0;
-    for let mut i = 0; i < 3; i = i + 1 {
-        let x = i; // Shadows outer x in loop
-        sum = sum + x;
-    }
-    sum + x // sum = 0+0+1+2 = 3, plus outer x = 13
-}

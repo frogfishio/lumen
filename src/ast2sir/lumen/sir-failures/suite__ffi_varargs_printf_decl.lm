@@ -1,8 +1,0 @@
-extern "C" unsafe fn printf(fmt: Ptr[U8], ...) -> I32;
-
-fn main() {
-  unsafe {
-    let fmt: Ptr[U8] = ((0 as Usize) as Ptr[U8]);
-    let _rc = printf(fmt, 1 as I32, (2 as Usize) as Ptr[U8], 3 as U64);
-  }
-}

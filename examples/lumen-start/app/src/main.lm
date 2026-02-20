@@ -1,0 +1,28 @@
+mod app;
+
+use hello::hello;
+use lumen::Option;
+use lumen::Result;
+
+fn ok() -> Result[I32, I32] {
+  Result::Ok(1 as I32)
+}
+
+fn main() -> I32 {
+  let _msg: I32 = hello();
+
+  let x: Option[I32] = Option::Some(1 as I32);
+  let y: I32 = match x {
+    Option::Some(v) => v,
+    Option::None => 0 as I32,
+  };
+
+  let r: Result[I32, I32] = ok();
+  let z: I32 = match r {
+    Result::Ok(v) => v,
+    Result::Err(_e) => 0 as I32,
+  };
+
+  y + z
+}
+

@@ -1,5 +1,0 @@
-mod a::b;
-
-use super::f;
-
-pub(super) fn g() -> I32 { f() + (1 as I32) }

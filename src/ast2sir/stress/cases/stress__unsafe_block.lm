@@ -1,7 +1,0 @@
-pub fn main() -> i32 {
-    let x = 42;
-    unsafe {
-        let p = &x as *const i32;
-        *p
-    }
-}

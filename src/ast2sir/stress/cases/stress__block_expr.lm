@@ -1,8 +1,0 @@
-fn main() {
-    let result = {
-        let a = 1 as I32;
-        let b = 2 as I32;
-        a + b
-    };
-    let _ = result;
-}

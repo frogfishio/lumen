@@ -1,5 +1,0 @@
-pub fn main() -> i32 {
-    let x = 42;
-    let p: Ptr[i32] = &x as *const i32 as Ptr[i32];
-    unsafe { *p }
-}

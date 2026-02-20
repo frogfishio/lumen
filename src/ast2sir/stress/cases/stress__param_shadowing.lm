@@ -1,8 +1,0 @@
-fn func(x: I32) -> I32 {
-    let x = x + 1; // Shadows parameter
-    x
-}
-
-pub fn main() -> i32 {
-    func(10) // Should return 11
-}

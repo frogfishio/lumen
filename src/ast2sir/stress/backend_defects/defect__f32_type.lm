@@ -1,4 +1,0 @@
-pub fn main() -> f32 {
-    let x: f32 = 3.14;
-    x
-}

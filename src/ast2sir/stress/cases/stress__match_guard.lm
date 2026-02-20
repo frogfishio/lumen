@@ -1,7 +1,0 @@
-pub fn main() -> i32 {
-    let x = 5;
-    match x {
-        y if y > 3 => y,
-        _ => 0,
-    }
-}

@@ -1,5 +1,0 @@
-fn main() {
-    let t = (1 as I32, 2 as I32, 3 as I32, 4 as I32, 5 as I32, 6 as I32, 7 as I32, 8 as I32);
-    let (a, b, c, d, e, f, g, h) = t;
-    let _ = a + b + c + d + e + f + g + h;
-}

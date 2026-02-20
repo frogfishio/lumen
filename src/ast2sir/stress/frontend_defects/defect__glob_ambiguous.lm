@@ -1,9 +1,0 @@
-mod util { pub fn add() -> I32 { 1 } }
-mod math { pub fn add() -> I32 { 2 } }
-
-use util::*;
-use math::*;
-
-pub fn main() -> i32 {
-    add() // Should error: ambiguous
-}

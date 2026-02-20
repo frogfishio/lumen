@@ -1,7 +1,0 @@
-@repr(C)
-union U { a: U32, b: [U8; 4] }
-
-fn main() {
-  let u: U = U { a: 0 as U32 };
-  let _x = u.b;
-}

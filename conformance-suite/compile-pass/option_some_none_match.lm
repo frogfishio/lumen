@@ -1,7 +1,0 @@
-fn main() {
-  let x: Option[I32] = Some(1 as I32);
-  let _y: I32 = match x {
-    Some(v) => v,
-    None => 0 as I32,
-  };
-}

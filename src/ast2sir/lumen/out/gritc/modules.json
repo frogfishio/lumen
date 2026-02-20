@@ -1,7 +1,0 @@
-{
-  "ok": true,
-  "start": null,
-  "modules": [
-    {"name":"main","bindings":[{"name":"puts","target":"main::puts","exported":false},{"name":"main","target":"main::main","exported":false}]}
-  ]
-}

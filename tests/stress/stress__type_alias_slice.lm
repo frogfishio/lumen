@@ -1,0 +1,5 @@
+type SliceType = Slice[I32];
+
+pub fn main() -> i32 {
+    0
+}

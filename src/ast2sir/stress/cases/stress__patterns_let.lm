@@ -1,5 +1,0 @@
-fn main() {
-    let (a, b) = (1 as I32, 2 as I32);
-    let _ = a;
-    let _ = b;
-}

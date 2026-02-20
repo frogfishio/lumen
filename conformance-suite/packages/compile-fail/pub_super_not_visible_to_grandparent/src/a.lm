@@ -1,3 +1,0 @@
-mod a;
-
-pub fn f() -> I32 { 1 as I32 }

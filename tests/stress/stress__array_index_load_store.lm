@@ -1,0 +1,15 @@
+// Stress: array indexing address, `!` load, and store via `*p = v`.
+
+fn main() {
+  unsafe {
+    let arr: [I32; 3] = [10, 20, 30];
+
+    // Address of element 1.
+    let p: Ptr[I32] = arr[1];
+    *p = 99 as I32;
+
+    // Load back through `!`.
+    let v: I32 = arr[1]!;
+    let _: I32 = v;
+  }
+}

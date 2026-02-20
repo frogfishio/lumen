@@ -1,4 +1,0 @@
-pub fn main() -> i32 {
-defer 0;
-0
-}

@@ -1,0 +1,5 @@
+const MAX: I32 = 100;
+
+pub fn main() -> i32 {
+    MAX
+}

@@ -1,6 +1,0 @@
-fn main() {
-    let arr = [10, 20, 30, 40, 50];
-    let idx = 2 as I32;
-    let val = arr[idx as Usize];
-    let _ = val;
-}

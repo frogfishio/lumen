@@ -1,4 +1,0 @@
-fn main() {
-  let xs: [I32; 4] = [0 as I32; 4];
-  let _ = xs[0 as Usize];
-}

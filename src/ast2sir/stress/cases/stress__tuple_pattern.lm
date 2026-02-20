@@ -1,6 +1,0 @@
-pub fn main() -> i32 {
-    let t = (10, 20);
-    match t {
-        (a, b) => a + b,
-    }
-}

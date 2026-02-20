@@ -1,6 +1,0 @@
-fn main() {
-  let n: I32 = 123;
-  for x in n {
-    let _ = x;
-  }
-}

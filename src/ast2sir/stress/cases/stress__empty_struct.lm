@@ -1,6 +1,0 @@
-struct Empty {}
-
-fn main() {
-    let e = Empty {};
-    let _ = e;
-}

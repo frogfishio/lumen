@@ -1,0 +1,19 @@
+extern "C" fn puts(s: Ptr[U8]);
+
+fn complex() {
+    unsafe {
+        defer {
+            unsafe {
+                defer {
+                    puts(b"inner defer\n\0" as Ptr[U8]);
+                };
+                puts(b"middle defer\n\0" as Ptr[U8]);
+            };
+        };
+        puts(b"unsafe block\n\0" as Ptr[U8]);
+    }
+}
+
+fn main() {
+    complex();
+}

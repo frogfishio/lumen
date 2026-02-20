@@ -1,9 +1,0 @@
-enum Color {
-Red,
-Green,
-Blue,
-}
-
-pub fn main() -> i32 {
-0
-}

@@ -1,4 +1,0 @@
-fn main() {
-    let size = core::mem::size_of::<I32>();
-    let _ = size;
-}

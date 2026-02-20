@@ -1,6 +1,0 @@
-extern "C" fn strlen(s: Ptr[U8]) -> Usize;
-
-fn main() {
-  let p: Ptr[U8] = unsafe { (0 as Usize) as Ptr[U8] };
-  let _n = strlen(p);
-}
