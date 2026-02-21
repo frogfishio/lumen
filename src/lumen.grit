@@ -479,7 +479,13 @@ rules {
   EnumItemLower = Attrs vis:Visibility? EnumKW name:@IdentLower gen:GenericParams?
             LBrace type:EnumVariantList RBrace
             => TypeDecl(name, type);
-  EnumVariantList = (items:EnumVariant (Comma items:EnumVariant)* Comma?)? => Args(items);
+  ;; Avoid optional-wrapper list forms here: Stage4 strict lowering currently
+  ;; binds `Args(items)` more reliably when the list does not introduce an
+  ;; extra `@opt` node around the whole list.
+  ;;
+  ;; `items:EnumVariant?` permits an empty variant list (`enum E {}`) while still
+  ;; calling the canonical `Args(items)` intrinsic.
+  EnumVariantList = items:EnumVariant? (Comma items:EnumVariant)* Comma? => Args(items);
   ;; Avoid LALR ambiguity: parse the variant name first, then optionally tuple args.
   ;; We lower everything to Call(callee, args?) (unit variants have args absent).
   EnumVariant = Attrs vis:Visibility? callee:NameExpr args:EnumVariantPayload? => Call(callee, args);
@@ -542,7 +548,8 @@ rules {
   ;; NOTE: `StmtInBlock` is intentionally a transparent wrapper (no semantics).
   ;; It must only contain a single semantics-bearing child rule so Stage 4 can
   ;; fold it away and never emit `k:"rule"` nodes at the output boundary.
-  StmtInBlock = LetStmtInBlock
+  StmtInBlock = LetDiscardStmtInBlock
+             | LetStmtInBlock
              | ReturnStmtInBlock
              | BreakStmtInBlock
              | ContinueStmtInBlock
@@ -551,6 +558,13 @@ rules {
              | ForStmt
              | LoopStmt
              | ExprStmtInBlock;
+
+  ;; `let _ = <expr>;` is a discard-evaluation statement (no binding).
+  ;; We intentionally lower it as an expression statement so strict typing does not
+  ;; require committing a local binder type for `_`.
+  ;; If the user wants “type-check but discard”, they can write `let _: T = expr;`.
+  LetDiscardStmtInBlock = Attrs LetKW mut_kw:@MutKW? u:@Underscore Eq expr:Expr Semi?
+                        => Paren(expr);
 
   ;; Let statements: allow optional semicolon (some fixtures omit it).
   ;; Disambiguation note: we intentionally do NOT allow bare `{ ... }` blocks as
@@ -573,11 +587,14 @@ rules {
   ;; Note: `Stmt` is still used by `While.body` and loop bodies, where semicolon
   ;; handling is not part of the construct.
   ;; Note: `Stmt` is used for loop bodies; allow blocks there.
-  Stmt = LetStmt | WhileStmt | ForStmt | LoopStmt | BreakStmt | ContinueStmt | DeferStmt | ReturnStmt | Block | Expr;
+  Stmt = LetDiscardStmt | LetStmt | WhileStmt | ForStmt | LoopStmt | BreakStmt | ContinueStmt | DeferStmt | ReturnStmt | Block | Expr;
 
   ;; Let: accept patterns and lower them explicitly.
   LetStmt = Attrs LetKW mut_kw:@MutKW? pat:Pat (Colon type:Type)? Eq init:Expr?
            => LVarPat(pat, type, init);
+
+  ;; Discard let in statement position.
+  LetDiscardStmt = Attrs LetKW mut_kw:@MutKW? u:@Underscore Eq expr:Expr => Paren(expr);
 
   VarDecl = LetStmt;
 
@@ -952,4 +969,16 @@ section macros {
     LMatchArm: { callee: MatchArm; fields: { pat: pat; guard: guard; body: body; }; };
     LBin: { callee: Bin; fields: { op: op; op_tok: op_tok; lhs: lhs; rhs: rhs; }; };
   };
+}
+
+section modules {
+  ;; Module declarator in file headers and inline modules: `mod ...;` / `mod name { ... }`
+  declarator: ModKW;
+  ;; Import statements: `use ...;` (including use trees)
+  importer: UseKW;
+  ;; Import aliasing: `use path as Name;`
+  alias: AsKW;
+  ;; Export marker: `pub ...`
+  export_prefix: PubKW;
+  exts: ["lm"];
 }
