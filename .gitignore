@@ -1,1 +1,20 @@
+# Build artifacts
+build/
+out/
+*.o
+*.exe
+*.a
+*.so
+*.dylib
+
+# IDE
+.vscode/settings.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
 tmp/

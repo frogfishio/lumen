@@ -28,5 +28,7 @@
         "path": "./snippets/lumen.json"
       }
     ]
-  }
+  },
+  "license": "GPL-3.0-or-later",
+  "author": "Alexander R. Croft <alex@frogfish.io>"
 }

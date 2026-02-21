@@ -32,3 +32,37 @@ Because we love C.
 C gets the job done.
 
 So does Lumen.
+
+## License
+
+The Lumen compiler is free software licensed under the GNU General Public License version 3 or later.
+
+This license applies to the compiler itself and its source code. Programs compiled with Lumen are not affected by this license; they belong to you, just like with GCC.
+
+See LICENSE for the full license text.
+
+## Building
+
+To build the Lumen compiler:
+
+```sh
+make build
+```
+
+This will generate `bin/lumenc`.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Code of Conduct
+
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+## Security
+
+See [SECURITY.md](SECURITY.md)
+
+## Contact
+
+Alexander R. Croft <alex@frogfish.io>
