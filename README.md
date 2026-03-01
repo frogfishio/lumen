@@ -62,7 +62,3 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
 ## Security
 
 See [SECURITY.md](SECURITY.md)
-
-## Contact
-
-Alexander R. Croft <alex@frogfish.io>
