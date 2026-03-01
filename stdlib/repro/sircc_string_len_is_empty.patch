@@ -1,0 +1,256 @@
+diff --git a/src/ast2sir/experiment/lumen-start/TODO.md b/src/ast2sir/experiment/lumen-start/TODO.md
+index 51c87c7..f802c8b 100644
+--- a/src/ast2sir/experiment/lumen-start/TODO.md
++++ b/src/ast2sir/experiment/lumen-start/TODO.md
+@@ -3,10 +3,20 @@
+ Goal: ship a usable `packages/json/src/json.lm` JSON parser (and later serializer) while growing a real, testable slice of the Lumen stdlib (strings, utf-8, buffers, containers) and flushing out compiler/lowering bugs as we go.
+ 
+ Rules of engagement:
+-- [ ] Keep increments small (one new helper / one new parse feature at a time)
+-- [ ] After each change: `make run` and add/extend a smoke-check in `app/src/main.lm`
++- [x] Keep increments small (one new helper / one new parse feature at a time)
++- [x] After each change: `make run` and add/extend a smoke-check in `app/src/main.lm`
+ - [ ] Be explicit about ownership (who allocates, who frees)
+ 
++## Progress log (keep short)
++
++- 2026-02-23: Baseline `make run` is green (expected `exit=2`).
++- 2026-02-23: Added `lumen::utf8` module and refactored `json::scan_string` to use it:
++  - `lumen::utf8::decode_u16_hex4_at` (used for JSON `\uXXXX` scanning)
++  - `lumen::utf8::scan1` (validates one UTF-8 sequence; JSON string scan delegates to it)
++- 2026-02-23: Tried adding `lumen::string::len/is_empty` wrappers; `sircc` failed in lowering. Reverted to restore green baseline.
++  - Repro patch: `repro/sircc_string_len_is_empty.patch`
++  - Details: `BUGS.md`
++
+ ## Milestone A — Byte + string foundations
+ 
+ - [ ] Decide/declare a first-class “string” representation for this experiment (likely `Utf8 = Slice[U8]` + explicit ownership)
+@@ -21,8 +31,10 @@ Rules of engagement:
+ - [ ] Add `lumen::utf8` primitives (minimal, parser-oriented):
+   - [ ] `validate(bytes: Slice[U8]) -> bool` (optional at first)
+   - [ ] `encode_codepoint_to_utf8(cp: U32, out: Buffer) -> Buffer`
+-  - [ ] `decode_hex4(bytes: Slice[U8], i: Usize) -> Result[U16, Utf8Error]` (for `\uXXXX`)
+-  - [ ] Handle surrogate pairs for JSON `\uD800..\uDFFF`
++  - [x] `decode_hex4(bytes: Slice[U8], i: Usize) -> Result[U16, Utf8Error]` (for `\uXXXX`)
++    - Implemented as `decode_u16_hex4_at(bytes, i) -> I32` returning `-1` on failure.
++  - [~] Handle surrogate pairs for JSON `\uD800..\uDFFF`
++    - Currently validated in `json::scan_string` (pair structure + range checks).
+ 
+ ## Milestone B — Buffer ergonomics for building strings
+ 
+diff --git a/src/ast2sir/experiment/lumen-start/app/src/main.lm b/src/ast2sir/experiment/lumen-start/app/src/main.lm
+index b9b8df5..088e4d3 100644
+--- a/src/ast2sir/experiment/lumen-start/app/src/main.lm
++++ b/src/ast2sir/experiment/lumen-start/app/src/main.lm
+@@ -195,6 +195,9 @@ fn main(argc: I32, _argv: Ptr[Ptr[U8]]) -> I32 {
+ 
+       let bytes: Slice[U8] = string::from_cstr(ok_c);
+       let bytes_len: Usize = slice::len[U8](bytes);
++      // Repro: these wrappers triggered sircc lowering failures.
++      let bytes_len2: Usize = string::len(bytes);
++      let bytes_nonempty: bool = !string::is_empty(bytes);
+       let bytes_ptr: Ptr[U8] = slice::ptr[U8](bytes);
+ 
+       let ok2_c: Ptr[U8] = _cstr2(111 as U8, 107 as U8);
+@@ -229,6 +232,8 @@ fn main(argc: I32, _argv: Ptr[Ptr[U8]]) -> I32 {
+       let _ = slice::free_hdr[U8](ws_bytes);
+ 
+       invariant(bytes_len == (2 as Usize));
++      invariant(bytes_len2 == bytes_len);
++      invariant(bytes_nonempty);
+       invariant(ok_eq);
+       invariant(sw_ok);
+       invariant(!sw_bad);
+diff --git a/src/ast2sir/experiment/lumen-start/packages/json/src/json.lm b/src/ast2sir/experiment/lumen-start/packages/json/src/json.lm
+index ec744c7..9a35ed1 100644
+--- a/src/ast2sir/experiment/lumen-start/packages/json/src/json.lm
++++ b/src/ast2sir/experiment/lumen-start/packages/json/src/json.lm
+@@ -3,79 +3,7 @@ mod json;
+ use lumen::string;
+ use lumen::slice;
+ 
+-fn _is_hex_digit(b: U8) -> bool {
+-	if b >= (48 as U8) {
+-		if b <= (57 as U8) {
+-			true
+-		} else {
+-			if b >= (65 as U8) {
+-				if b <= (70 as U8) {
+-					true
+-				} else {
+-					if b >= (97 as U8) {
+-						b <= (102 as U8)
+-					} else {
+-						false
+-					}
+-				}
+-			} else {
+-				false
+-			}
+-		}
+-	} else {
+-		false
+-	}
+-}
+-
+-fn _hex_val(b: U8) -> I32 {
+-	if b >= (48 as U8) {
+-		if b <= (57 as U8) {
+-			(b - (48 as U8)) as I32
+-		} else {
+-			if b >= (65 as U8) {
+-				if b <= (70 as U8) {
+-					(10 as I32) + ((b - (65 as U8)) as I32)
+-				} else {
+-					(10 as I32) + ((b - (97 as U8)) as I32)
+-				}
+-			} else {
+-				(10 as I32) + ((b - (97 as U8)) as I32)
+-			}
+-		}
+-	} else {
+-		0 as I32
+-	}
+-}
+-
+-// Decodes 4 hex digits at `i` as a 16-bit value.
+-// Returns 0..65535, or -1 on failure.
+-fn _decode_u16_at(bytes: Slice[U8], i: Usize) -> I32 {
+-	let l: Usize = slice::len[U8](bytes);
+-	let need: Usize = 4 as Usize;
+-	if i + need > l {
+-		return -1 as I32;
+-	}
+-	let mut h0: U8 = 0 as U8;
+-	let mut h1: U8 = 0 as U8;
+-	let mut h2: U8 = 0 as U8;
+-	let mut h3: U8 = 0 as U8;
+-	unsafe {
+-		let p: Ptr[U8] = slice::ptr[U8](bytes);
+-		h0 = p[i as I64]!;
+-		h1 = p[(i + (1 as Usize)) as I64]!;
+-		h2 = p[(i + (2 as Usize)) as I64]!;
+-		h3 = p[(i + (3 as Usize)) as I64]!;
+-	}
+-	if !_is_hex_digit(h0) { return -1 as I32; }
+-	if !_is_hex_digit(h1) { return -1 as I32; }
+-	if !_is_hex_digit(h2) { return -1 as I32; }
+-	if !_is_hex_digit(h3) { return -1 as I32; }
+-	let v0: I32 = _hex_val(h0);
+-	let v1: I32 = _hex_val(h1);
+-	let v2: I32 = _hex_val(h2);
+-	let v3: I32 = _hex_val(h3);
+-	(v0 * (4096 as I32)) + (v1 * (256 as I32)) + (v2 * (16 as I32)) + v3
+-}
++use lumen::utf8;
+ 
+ unsafe fn _u8_at(bytes: Slice[U8], i: Usize) -> U8 {
+ 	let p: Ptr[U8] = slice::ptr[U8](bytes);
+@@ -251,7 +179,7 @@ pub fn scan_string(bytes: Slice[U8], start: Usize) -> I64 {
+ 			if esc == (114 as U8) { i = i + (2 as Usize); continue; }
+ 			if esc == (116 as U8) { i = i + (2 as Usize); continue; }
+ 			if esc == (117 as U8) {
+-				let u0: I32 = _decode_u16_at(bytes, i + (2 as Usize));
++				let u0: I32 = utf8::decode_u16_hex4_at(bytes, i + (2 as Usize));
+ 				if u0 < (0 as I32) { return -1 as I64; }
+ 				if u0 >= (0xD800 as I32) {
+ 					if u0 <= (0xDBFF as I32) {
+@@ -262,7 +190,7 @@ pub fn scan_string(bytes: Slice[U8], start: Usize) -> I64 {
+ 						let b_u: U8 = unsafe { _u8_at(bytes, j1) };
+ 						if b_slash != (92 as U8) { return -1 as I64; }
+ 						if b_u != (117 as U8) { return -1 as I64; }
+-						let u1: I32 = _decode_u16_at(bytes, j + (2 as Usize));
++						let u1: I32 = utf8::decode_u16_hex4_at(bytes, j + (2 as Usize));
+ 						if u1 < (0 as I32) { return -1 as I64; }
+ 						if u1 < (0xDC00 as I32) { return -1 as I64; }
+ 						if u1 > (0xDFFF as I32) { return -1 as I64; }
+@@ -284,65 +212,12 @@ pub fn scan_string(bytes: Slice[U8], start: Usize) -> I64 {
+ 			i = i + (1 as Usize);
+ 			continue;
+ 		}
+-		if b0u < (0xC2 as I32) {
++		let next: I64 = utf8::scan1(bytes, i);
++		if next < (0 as I64) {
+ 			return -1 as I64;
+ 		}
+-		if b0u <= (0xDF as I32) {
+-			let i2: Usize = i + (1 as Usize);
+-			if i2 >= l { return -1 as I64; }
+-			let b1: U8 = unsafe { _u8_at(bytes, i2) };
+-			let b1s: I32 = b1 as I32;
+-			let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+-			if b1u < (0x80 as I32) { return -1 as I64; }
+-			if b1u > (0xBF as I32) { return -1 as I64; }
+-			i = i + (2 as Usize);
+-			continue;
+-		}
+-		if b0u <= (0xEF as I32) {
+-			let i2: Usize = i + (1 as Usize);
+-			let i3: Usize = i + (2 as Usize);
+-			if i3 >= l { return -1 as I64; }
+-			let b1: U8 = unsafe { _u8_at(bytes, i2) };
+-			let b2: U8 = unsafe { _u8_at(bytes, i3) };
+-			let b1s: I32 = b1 as I32;
+-			let b2s: I32 = b2 as I32;
+-			let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+-			let b2u: I32 = if b2s < (0 as I32) { b2s + (256 as I32) } else { b2s };
+-			if b1u < (0x80 as I32) { return -1 as I64; }
+-			if b1u > (0xBF as I32) { return -1 as I64; }
+-			if b2u < (0x80 as I32) { return -1 as I64; }
+-			if b2u > (0xBF as I32) { return -1 as I64; }
+-			if b0u == (0xE0 as I32) { if b1u < (0xA0 as I32) { return -1 as I64; } }
+-			if b0u == (0xED as I32) { if b1u > (0x9F as I32) { return -1 as I64; } }
+-			i = i + (3 as Usize);
+-			continue;
+-		}
+-		if b0u <= (0xF4 as I32) {
+-			let i2: Usize = i + (1 as Usize);
+-			let i3: Usize = i + (2 as Usize);
+-			let i4: Usize = i + (3 as Usize);
+-			if i4 >= l { return -1 as I64; }
+-			let b1: U8 = unsafe { _u8_at(bytes, i2) };
+-			let b2: U8 = unsafe { _u8_at(bytes, i3) };
+-			let b3: U8 = unsafe { _u8_at(bytes, i4) };
+-			let b1s: I32 = b1 as I32;
+-			let b2s: I32 = b2 as I32;
+-			let b3s: I32 = b3 as I32;
+-			let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+-			let b2u: I32 = if b2s < (0 as I32) { b2s + (256 as I32) } else { b2s };
+-			let b3u: I32 = if b3s < (0 as I32) { b3s + (256 as I32) } else { b3s };
+-			if b1u < (0x80 as I32) { return -1 as I64; }
+-			if b1u > (0xBF as I32) { return -1 as I64; }
+-			if b2u < (0x80 as I32) { return -1 as I64; }
+-			if b2u > (0xBF as I32) { return -1 as I64; }
+-			if b3u < (0x80 as I32) { return -1 as I64; }
+-			if b3u > (0xBF as I32) { return -1 as I64; }
+-			if b0u == (0xF0 as I32) { if b1u < (0x90 as I32) { return -1 as I64; } }
+-			if b0u == (0xF4 as I32) { if b1u > (0x8F as I32) { return -1 as I64; } }
+-			i = i + (4 as Usize);
+-			continue;
+-		}
+-		return -1 as I64;
++		i = next as Usize;
++		continue;
+ 	}
+ 	-1 as I64
+ }
+diff --git a/src/ast2sir/experiment/lumen-start/packages/lumen/src/string.lm b/src/ast2sir/experiment/lumen-start/packages/lumen/src/string.lm
+index 1e1595b..5f79359 100644
+--- a/src/ast2sir/experiment/lumen-start/packages/lumen/src/string.lm
++++ b/src/ast2sir/experiment/lumen-start/packages/lumen/src/string.lm
+@@ -39,6 +39,15 @@ pub unsafe fn from_cstr(p: Ptr[U8]) -> Slice[U8] {
+ 	slice::make[U8](data, n)
+ }
+ 
++// Repro helper: thin wrappers used by parsers.
++pub fn len(bytes: Slice[U8]) -> Usize {
++	slice::len[U8](bytes)
++}
++
++pub fn is_empty(bytes: Slice[U8]) -> bool {
++	slice::is_empty[U8](bytes)
++}
++
+ pub fn eq(a: Slice[U8], b: Slice[U8]) -> bool {
+ 	let al: Usize = slice::len[U8](a);
+ 	let bl: Usize = slice::len[U8](b);

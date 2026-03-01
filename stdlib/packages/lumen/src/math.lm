@@ -1,0 +1,2 @@
+mod lumen::math;
+// Math functions, e.g. sin, cos, sqrt, etc. using FP coprocessor

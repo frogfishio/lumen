@@ -1,0 +1,486 @@
+mod app;
+
+use hello::hello;
+use lumen::*;
+use lumen::bytes;
+use types::vector;
+use types::vector::Vector;
+
+// Generic instantiation ("linst") smoke.
+struct Box[T] { v: T }
+
+// Simple generic identity function.
+fn id[T](x: T) -> T { x }
+
+fn ok() -> Result[I32, I32] {
+  Result::Ok(1 as I32)
+}
+
+// Compile-time check: nested type application in a parameter type.
+// This used to trigger: "type call expects TypeRef args".
+fn _nested_type_app(_p: Ptr[Slice[I32]]) -> I32 {
+  0 as I32
+}
+
+// Compile-only regression: value-if should not collapse to `any`.
+fn _value_if_smoke() -> I32 {
+  let y: I32 = if true { 1 as I32 } else { 2 as I32 };
+  y
+}
+
+fn _generic_smoke() -> I32 {
+  let b: Box[I32] = Box { v: 1 as I32 };
+  let x: I32 = id[I32](b.v);
+  x
+}
+
+// Compile-only regression: explicit generic instantiation encoded as Index-callee.
+// This used to fail in ast2sir with: unknown Name 'I32'.
+fn _slice_len_generic_index_callee_smoke(s: Slice[I32]) -> Usize {
+  slice::len[I32](s)
+}
+
+unsafe fn _cstr2(a: U8, b: U8) -> Ptr[U8] {
+  let p: Ptr[U8] = mem::alloc(3 as Usize) as Ptr[U8];
+  let p0: Ptr[U8] = p[0 as I64];
+  *p0 = a;
+  let p1: Ptr[U8] = p[1 as I64];
+  *p1 = b;
+  let p2: Ptr[U8] = p[2 as I64];
+  *p2 = 0 as U8;
+  p
+}
+
+unsafe fn _print_ok() -> I32 {
+  io::puts(_cstr2(111 as U8, 107 as U8))
+}
+
+unsafe fn _print_fail() -> I32 {
+  io::puts(_cstr2(102 as U8, 33 as U8))
+}
+
+unsafe fn _bytes3(a: U8, b: U8, c: U8) -> Slice[U8] {
+  let data_u: Usize = mem::alloc(3 as Usize);
+  let data: Ptr[U8] = data_u as Ptr[U8];
+  let p0: Ptr[U8] = data[0 as I64]; *p0 = a;
+  let p1: Ptr[U8] = data[1 as I64]; *p1 = b;
+  let p2: Ptr[U8] = data[2 as I64]; *p2 = c;
+  slice::make[U8](data, 3 as Usize)
+}
+
+unsafe fn _bytes4(a: U8, b: U8, c: U8, d: U8) -> Slice[U8] {
+  let data_u: Usize = mem::alloc(4 as Usize);
+  let data: Ptr[U8] = data_u as Ptr[U8];
+  let p0: Ptr[U8] = data[0 as I64]; *p0 = a;
+  let p1: Ptr[U8] = data[1 as I64]; *p1 = b;
+  let p2: Ptr[U8] = data[2 as I64]; *p2 = c;
+  let p3: Ptr[U8] = data[3 as I64]; *p3 = d;
+  slice::make[U8](data, 4 as Usize)
+}
+
+unsafe fn _bytes5(a: U8, b: U8, c: U8, d: U8, e: U8) -> Slice[U8] {
+  let data_u: Usize = mem::alloc(5 as Usize);
+  let data: Ptr[U8] = data_u as Ptr[U8];
+  let p0: Ptr[U8] = data[0 as I64]; *p0 = a;
+  let p1: Ptr[U8] = data[1 as I64]; *p1 = b;
+  let p2: Ptr[U8] = data[2 as I64]; *p2 = c;
+  let p3: Ptr[U8] = data[3 as I64]; *p3 = d;
+  let p4: Ptr[U8] = data[4 as I64]; *p4 = e;
+  slice::make[U8](data, 5 as Usize)
+}
+
+unsafe fn _bytes6(a: U8, b: U8, c: U8, d: U8, e: U8, f: U8) -> Slice[U8] {
+  let data_u: Usize = mem::alloc(6 as Usize);
+  let data: Ptr[U8] = data_u as Ptr[U8];
+  let p0: Ptr[U8] = data[0 as I64]; *p0 = a;
+  let p1: Ptr[U8] = data[1 as I64]; *p1 = b;
+  let p2: Ptr[U8] = data[2 as I64]; *p2 = c;
+  let p3: Ptr[U8] = data[3 as I64]; *p3 = d;
+  let p4: Ptr[U8] = data[4 as I64]; *p4 = e;
+  let p5: Ptr[U8] = data[5 as I64]; *p5 = f;
+  slice::make[U8](data, 6 as Usize)
+}
+
+unsafe fn _bytes8(a: U8, b: U8, c: U8, d: U8, e: U8, f: U8, g: U8, h: U8) -> Slice[U8] {
+  let data_u: Usize = mem::alloc(8 as Usize);
+  let data: Ptr[U8] = data_u as Ptr[U8];
+  let p0: Ptr[U8] = data[0 as I64]; *p0 = a;
+  let p1: Ptr[U8] = data[1 as I64]; *p1 = b;
+  let p2: Ptr[U8] = data[2 as I64]; *p2 = c;
+  let p3: Ptr[U8] = data[3 as I64]; *p3 = d;
+  let p4: Ptr[U8] = data[4 as I64]; *p4 = e;
+  let p5: Ptr[U8] = data[5 as I64]; *p5 = f;
+  let p6: Ptr[U8] = data[6 as I64]; *p6 = g;
+  let p7: Ptr[U8] = data[7 as I64]; *p7 = h;
+  slice::make[U8](data, 8 as Usize)
+}
+
+fn main(argc: I32, _argv: Ptr[Ptr[U8]]) -> I32 {
+  // New feature smoke: runtime assert / invariant.
+  // Keep it simple but non-trivial (touches comparison + bool).
+  assert(argc >= (0 as I32));
+  invariant((1 as I32) == (1 as I32));
+
+  // New feature smoke: static assert.
+  // (Depending on pipeline stage, this may be consumed before ast2sir.)
+  assert!((2 as I32) == (2 as I32));
+
+  // New stdlib experiment: growable buffer.
+  let mut b: buffer::Buffer = buffer::new[I32]();
+  b = buffer::push[I32](b, 10 as I32);
+  b = buffer::push[I32](b, 20 as I32);
+  b = buffer::push[I32](b, 30 as I32);
+  invariant(buffer::len(b) == (3 as Usize));
+
+  // Option-returning accessors.
+  let g: Option[I32] = buffer::get[I32](b, 1 as Usize);
+  let gv: I32 = option_unwrap_or[I32](g, -1 as I32);
+  invariant(gv == (20 as I32));
+
+  let p: Option[I32] = buffer::pop[I32](b);
+  let pv: I32 = option_unwrap_or[I32](p, -1 as I32);
+  invariant(pv == (30 as I32));
+  invariant(buffer::len(b) == (2 as Usize));
+
+  unsafe {
+    let bs: Slice[I32] = buffer::as_slice[I32](b);
+    invariant(slice::len[I32](bs) == (2 as Usize));
+    let _ = slice::free_hdr[I32](bs);
+  }
+  b = buffer::free_buf(b);
+
+  unsafe {
+    // Build [1,2,3,4] on heap.
+    let data_u: Usize = mem::alloc((4 as Usize) * (4 as Usize));
+    let data: Ptr[I32] = data_u as Ptr[I32];
+    let p0: Ptr[I32] = data[0 as I64]; *p0 = 1 as I32;
+    let p1: Ptr[I32] = data[1 as I64]; *p1 = 2 as I32;
+    let p2: Ptr[I32] = data[2 as I64]; *p2 = 3 as I32;
+    let p3: Ptr[I32] = data[3 as I64]; *p3 = 4 as I32;
+
+    let s: Slice[I32] = slice::make[I32](data, 4 as Usize);
+    if slice::len[I32](s) != (4 as Usize) {
+      let _ = _print_fail();
+      return -1;
+    }
+
+    let t: Slice[I32] = slice::sub[I32](s, 2 as Usize, 99 as Usize);
+    if slice::len[I32](t) != (2 as Usize) {
+      let _ = _print_fail();
+      return -1;
+    }
+
+    let u: Slice[I32] = slice::concat[I32](s, t);
+    if slice::len[I32](u) != (6 as Usize) {
+      let _ = _print_fail();
+      return -1;
+    }
+
+    // New stdlib experiment: `lumen::string` helpers.
+    unsafe {
+      let ok_c: Ptr[U8] = _cstr2(111 as U8, 107 as U8);
+
+      let bytes: Slice[U8] = string::from_cstr(ok_c);
+      let bytes_len: Usize = slice::len[U8](bytes);
+      // Repro: these wrappers triggered sircc lowering failures.
+      let bytes_len2: Usize = string::len(bytes);
+      let bytes_nonempty: bool = !string::is_empty(bytes);
+      let bytes_ptr: Ptr[U8] = slice::ptr[U8](bytes);
+
+      let ok2_c: Ptr[U8] = _cstr2(111 as U8, 107 as U8);
+      let bytes2: Slice[U8] = string::from_cstr(ok2_c);
+      let bytes2_ptr: Ptr[U8] = slice::ptr[U8](bytes2);
+      let ok_eq: bool = string::eq(bytes, bytes2);
+
+      let bad_c: Ptr[U8] = _cstr2(102 as U8, 33 as U8);
+      let bad_bytes: Slice[U8] = string::from_cstr(bad_c);
+      let bad_ptr: Ptr[U8] = slice::ptr[U8](bad_bytes);
+
+      let ws_c: Ptr[U8] = _cstr2(32 as U8, 9 as U8);
+      let ws_bytes: Slice[U8] = string::from_cstr(ws_c);
+      let ws_ptr: Ptr[U8] = slice::ptr[U8](ws_bytes);
+
+      let sw_ok: bool = string::starts_with(bytes, bytes2);
+      let sw_bad: bool = string::starts_with(bytes, bad_bytes);
+      let ws_i: Usize = string::skip_ascii_ws(ws_bytes, 0 as Usize);
+      let ws_pred_ok: bool = string::is_ascii_ws(32 as U8) && string::is_ascii_ws(9 as U8);
+
+      let _ = mem::free(ok_c as Usize);
+      let _ = mem::free(ok2_c as Usize);
+      let _ = mem::free(bad_c as Usize);
+      let _ = mem::free(ws_c as Usize);
+      let _ = mem::free(bytes_ptr as Usize);
+      let _ = mem::free(bytes2_ptr as Usize);
+      let _ = mem::free(bad_ptr as Usize);
+      let _ = mem::free(ws_ptr as Usize);
+      let _ = slice::free_hdr[U8](bytes);
+      let _ = slice::free_hdr[U8](bytes2);
+      let _ = slice::free_hdr[U8](bad_bytes);
+      let _ = slice::free_hdr[U8](ws_bytes);
+
+      invariant(bytes_len == (2 as Usize));
+      invariant(bytes_len2 == bytes_len);
+      invariant(bytes_nonempty);
+      invariant(ok_eq);
+      invariant(sw_ok);
+      invariant(!sw_bad);
+      invariant(ws_i == (2 as Usize));
+      invariant(ws_pred_ok);
+    }
+
+    // UTF-8 `String` helpers (`lumen::str`).
+    unsafe {
+      let l0: I64 = str::byte_len("");
+      let l2: I64 = str::byte_len("ok");
+      let l2b: I64 = str::strlen("ok");
+      let s0: bool = str::is_empty("");
+      let s1: bool = !str::is_empty("x");
+
+      let eq1: bool = str::eq("hello", "hello");
+      let eq2: bool = !str::eq("hello", "hellO");
+
+      let sw1: bool = str::starts_with("hello", "he");
+      let sw2: bool = !str::starts_with("hello", "hi");
+
+      let ew1: bool = str::ends_with("hello", "lo");
+      let ew2: bool = !str::ends_with("hello", "ll");
+
+      let f1: I64 = str::find_byte("hello", 101 as U8, 0 as I64); // 'e'
+      let f2: I64 = str::find_byte("hello", 122 as U8, 0 as I64); // 'z'
+
+    let c0: I32 = str::strcmp("abc", "abc");
+    let c1: I32 = str::strcmp("abc", "abd");
+    let c2: I32 = str::strcmp("abc", "ab");
+    let c3: I32 = str::strcmp("ab", "abc");
+    let teq: bool = str::streq("hi", "hi");
+    let tne: bool = !str::streq("hi", "Hi");
+    let ttrim: String = str::trim_ascii_ws(" \tX\t ");
+
+      let ws_i: I64 = str::skip_ascii_ws(" \tX", 0 as I64);
+      let ws_pred_ok: bool = str::is_ascii_ws(32 as U8) && str::is_ascii_ws(9 as U8);
+
+      let utf8_ok: bool = str::is_valid_utf8("hello");
+      let cps: I64 = str::count_codepoints("hello");
+
+      invariant(l0 == (0 as I64));
+      invariant(l2 == (2 as I64));
+	  invariant(l2b == (2 as I64));
+      invariant(s0);
+      invariant(s1);
+      invariant(eq1);
+      invariant(eq2);
+      invariant(sw1);
+      invariant(sw2);
+      invariant(ew1);
+      invariant(ew2);
+      invariant(f1 == (1 as I64));
+      invariant(f2 == (-1 as I64));
+    invariant(c0 == (0 as I32));
+    invariant(c1 == (-1 as I32));
+    invariant(c2 == (1 as I32));
+    invariant(c3 == (-1 as I32));
+    invariant(teq);
+    invariant(tne);
+    invariant(str::eq(ttrim, "X"));
+      invariant(ws_i == (2 as I64));
+      invariant(ws_pred_ok);
+      invariant(utf8_ok);
+      invariant(cps == (5 as I64));
+    }
+
+  // Raw byte helpers (`lumen::bytes`).
+  unsafe {
+    let ws: Slice[U8] = _bytes4(32 as U8, 9 as U8, 88 as U8, 89 as U8); // " \tXY"
+    let wsp: Ptr[U8] = slice::ptr[U8](ws);
+    invariant(bytes::len(ws) == (4 as Usize));
+    invariant(!bytes::is_empty(ws));
+    invariant(bytes::skip_ascii_ws(ws, 0 as Usize) == (2 as Usize));
+    invariant(bytes::is_ascii_ws(32 as U8));
+    invariant(bytes::index_of_byte(ws, 88 as U8, 0 as Usize) == (2 as I64));
+    let _ = mem::free(wsp as Usize);
+    let _ = slice::free_hdr[U8](ws);
+  }
+
+    // New package experiment: `json::Cursor` building blocks.
+    unsafe {
+      // " \n n" => after skipping ws, we should point at 'n'.
+      let s: Slice[U8] = _bytes3(32 as U8, 10 as U8, 110 as U8);
+      let sp: Ptr[U8] = slice::ptr[U8](s);
+      let i1: Usize = json::skip_ws(s, 0 as Usize);
+      let b1: I32 = json::peek_byte(s, i1);
+      let ok_b1: bool = b1 == (110 as I32);
+
+      let _ = mem::free(sp as Usize);
+      let _ = slice::free_hdr[U8](s);
+
+      invariant(i1 == (2 as Usize));
+      invariant(ok_b1);
+    }
+
+    unsafe {
+      // " \nnull" => parse_null should return index 6.
+      let n: Slice[U8] = _bytes6(32 as U8, 10 as U8, 110 as U8, 117 as U8, 108 as U8, 108 as U8);
+      let np: Ptr[U8] = slice::ptr[U8](n);
+      let next: I64 = json::parse_null(n, 0 as Usize);
+      let nk: I32 = json::value_kind(n, 0 as Usize);
+      let nlit: I64 = json::parse_literal(n, 0 as Usize);
+
+      // " nuull" => should fail.
+      let bad: Slice[U8] = _bytes6(32 as U8, 110 as U8, 117 as U8, 117 as U8, 108 as U8, 108 as U8);
+      let badp: Ptr[U8] = slice::ptr[U8](bad);
+      let bad_next: I64 = json::parse_null(bad, 0 as Usize);
+      let bad_k: I32 = json::value_kind(bad, 0 as Usize);
+      let bad_lit: I64 = json::parse_literal(bad, 0 as Usize);
+
+      // " true" => parse_true should return index 5.
+      let t: Slice[U8] = _bytes5(32 as U8, 116 as U8, 114 as U8, 117 as U8, 101 as U8);
+      let tp: Ptr[U8] = slice::ptr[U8](t);
+      let t_next: I64 = json::parse_true(t, 0 as Usize);
+      let tk: I32 = json::value_kind(t, 0 as Usize);
+      let tlit: I64 = json::parse_literal(t, 0 as Usize);
+
+      // " truE" => should fail.
+      let t_bad: Slice[U8] = _bytes5(32 as U8, 116 as U8, 114 as U8, 117 as U8, 69 as U8);
+      let t_badp: Ptr[U8] = slice::ptr[U8](t_bad);
+      let t_bad_next: I64 = json::parse_true(t_bad, 0 as Usize);
+      let t_bad_k: I32 = json::value_kind(t_bad, 0 as Usize);
+      let t_bad_lit: I64 = json::parse_literal(t_bad, 0 as Usize);
+
+      // " false" => parse_false should return index 6.
+      let f: Slice[U8] = _bytes6(32 as U8, 102 as U8, 97 as U8, 108 as U8, 115 as U8, 101 as U8);
+      let fp: Ptr[U8] = slice::ptr[U8](f);
+      let f_next: I64 = json::parse_false(f, 0 as Usize);
+      let fk: I32 = json::value_kind(f, 0 as Usize);
+      let flit: I64 = json::parse_literal(f, 0 as Usize);
+
+      // " fals" (truncated) => should fail.
+      let f_bad: Slice[U8] = _bytes4(32 as U8, 102 as U8, 97 as U8, 108 as U8);
+      let f_badp: Ptr[U8] = slice::ptr[U8](f_bad);
+      let f_bad_next: I64 = json::parse_false(f_bad, 0 as Usize);
+      let f_bad_k: I32 = json::value_kind(f_bad, 0 as Usize);
+      let f_bad_lit: I64 = json::parse_literal(f_bad, 0 as Usize);
+
+      // " 12" => kind should be unknown for now.
+      let num: Slice[U8] = _bytes3(32 as U8, 49 as U8, 50 as U8);
+      let nump: Ptr[U8] = slice::ptr[U8](num);
+      let num_k: I32 = json::value_kind(num, 0 as Usize);
+      let num_lit: I64 = json::parse_literal(num, 0 as Usize);
+
+      let _ = mem::free(np as Usize);
+      let _ = slice::free_hdr[U8](n);
+      let _ = mem::free(badp as Usize);
+      let _ = slice::free_hdr[U8](bad);
+
+      let _ = mem::free(tp as Usize);
+      let _ = slice::free_hdr[U8](t);
+      let _ = mem::free(t_badp as Usize);
+      let _ = slice::free_hdr[U8](t_bad);
+
+      let _ = mem::free(fp as Usize);
+      let _ = slice::free_hdr[U8](f);
+      let _ = mem::free(f_badp as Usize);
+      let _ = slice::free_hdr[U8](f_bad);
+
+      let _ = mem::free(nump as Usize);
+      let _ = slice::free_hdr[U8](num);
+
+      invariant(next == (6 as I64));
+      invariant(bad_next == (-1 as I64));
+
+      invariant(nk == (0 as I32));
+      invariant(nlit == (6 as I64));
+      invariant(bad_k == (0 as I32));
+      invariant(bad_lit == (-1 as I64));
+
+      invariant(t_next == (5 as I64));
+      invariant(t_bad_next == (-1 as I64));
+
+      invariant(tk == (1 as I32));
+      invariant(tlit == (5 as I64));
+      invariant(t_bad_k == (1 as I32));
+      invariant(t_bad_lit == (-1 as I64));
+
+      invariant(f_next == (6 as I64));
+      invariant(f_bad_next == (-1 as I64));
+
+      invariant(fk == (2 as I32));
+      invariant(flit == (6 as I64));
+      invariant(f_bad_k == (2 as I32));
+      invariant(f_bad_lit == (-1 as I64));
+
+      invariant(num_k == (-1 as I32));
+      invariant(num_lit == (-1 as I64));
+    }
+
+    // JSON string scanning (UTF-8 + escape validation).
+    unsafe {
+      // "hi" (with leading space) => next index 5.
+      let s_hi: Slice[U8] = _bytes5(32 as U8, 34 as U8, 104 as U8, 105 as U8, 34 as U8);
+      let s_hi_p: Ptr[U8] = slice::ptr[U8](s_hi);
+      let s_hi_next: I64 = json::scan_string(s_hi, 0 as Usize);
+
+      // "\\n" => next index 4.
+      let s_esc: Slice[U8] = _bytes4(34 as U8, 92 as U8, 110 as U8, 34 as U8);
+      let s_esc_p: Ptr[U8] = slice::ptr[U8](s_esc);
+      let s_esc_next: I64 = json::scan_string(s_esc, 0 as Usize);
+
+      // "\u0041" => next index 8.
+      let s_u: Slice[U8] = _bytes8(34 as U8, 92 as U8, 117 as U8, 48 as U8, 48 as U8, 52 as U8, 49 as U8, 34 as U8);
+      let s_u_p: Ptr[U8] = slice::ptr[U8](s_u);
+      let s_u_next: I64 = json::scan_string(s_u, 0 as Usize);
+
+      // "\uDE00" (lone low surrogate) => invalid.
+      let s_low: Slice[U8] = _bytes8(34 as U8, 92 as U8, 117 as U8, 68 as U8, 69 as U8, 48 as U8, 48 as U8, 34 as U8);
+      let s_low_p: Ptr[U8] = slice::ptr[U8](s_low);
+      let s_low_next: I64 = json::scan_string(s_low, 0 as Usize);
+
+      // A non-BMP UTF-8 example: raw bytes F0 9F 98 80 => next index 6.
+      let s_utf8: Slice[U8] = _bytes6(34 as U8, 240 as U8, 159 as U8, 152 as U8, 128 as U8, 34 as U8);
+      let s_utf8_p: Ptr[U8] = slice::ptr[U8](s_utf8);
+      let s_utf8_next: I64 = json::scan_string(s_utf8, 0 as Usize);
+
+      // "\x01" unescaped control => invalid.
+      let s_ctl: Slice[U8] = _bytes3(34 as U8, 1 as U8, 34 as U8);
+      let s_ctl_p: Ptr[U8] = slice::ptr[U8](s_ctl);
+      let s_ctl_next: I64 = json::scan_string(s_ctl, 0 as Usize);
+
+      // "\xC0\xAF" overlong leader => invalid.
+      let s_bad2: Slice[U8] = _bytes4(34 as U8, 192 as U8, 175 as U8, 34 as U8);
+      let s_bad2_p: Ptr[U8] = slice::ptr[U8](s_bad2);
+      let s_bad2_next: I64 = json::scan_string(s_bad2, 0 as Usize);
+
+      let _ = mem::free(s_hi_p as Usize);
+      let _ = slice::free_hdr[U8](s_hi);
+
+      let _ = mem::free(s_esc_p as Usize);
+      let _ = slice::free_hdr[U8](s_esc);
+
+      let _ = mem::free(s_u_p as Usize);
+      let _ = slice::free_hdr[U8](s_u);
+
+      let _ = mem::free(s_low_p as Usize);
+      let _ = slice::free_hdr[U8](s_low);
+
+      let _ = mem::free(s_utf8_p as Usize);
+      let _ = slice::free_hdr[U8](s_utf8);
+
+      let _ = mem::free(s_ctl_p as Usize);
+      let _ = slice::free_hdr[U8](s_ctl);
+
+      let _ = mem::free(s_bad2_p as Usize);
+      let _ = slice::free_hdr[U8](s_bad2);
+      invariant(s_hi_next == (5 as I64));
+      invariant(s_esc_next == (4 as I64));
+      invariant(s_u_next == (8 as I64));
+      invariant(s_low_next == (-1 as I64));
+      invariant(s_utf8_next == (6 as I64));
+      invariant(s_ctl_next == (-1 as I64));
+      invariant(s_bad2_next == (-1 as I64));
+    }
+
+    let _ = _print_ok();
+    // Keep experiment's existing convention: exit code 2 means success.
+    2 as I32
+  }
+}
+

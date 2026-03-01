@@ -1,0 +1,2 @@
+mod lumen::atomics;
+// Atomics, multi-threading, etc. using atomic instructions, e.g. atomic_add, atomic_sub, etc.

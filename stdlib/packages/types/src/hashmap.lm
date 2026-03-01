@@ -1,0 +1,244 @@
+mod types::hashmap;
+
+use lumen::mem::*;
+
+pub type HashMap = Usize;
+
+// // Header layout (all Usize words):
+// //   [0] keys_ptr
+// //   [1] vals_ptr
+// //   [2] states_ptr  (0=empty, 1=full, 2=tomb)
+// //   [3] len
+// //   [4] cap
+const WORD_BYTES: Usize = 8 as Usize;
+const HDR_WORDS: Usize = 5 as Usize;
+const U0: Usize = 0 as Usize;
+const HDR_KEYS: Usize = 0 as Usize;
+const HDR_VALS: Usize = 1 as Usize;
+const HDR_STATES: Usize = 2 as Usize;
+
+unsafe fn _hdr_addr(m: HashMap, word_index: Usize) -> Usize {
+	m + (word_index * WORD_BYTES)
+}
+
+unsafe fn _load_usize(addr: Usize) -> Usize {
+	let mut tmp: Usize = 0 as Usize;
+	let dst: Usize = (&tmp as Ptr[Usize]) as Usize;
+	let _ = memcpy(dst, addr, WORD_BYTES);
+	tmp
+}
+
+unsafe fn _store_usize(addr: Usize, val: Usize) -> I32 {
+	let tmp: Usize = val;
+	let src: Usize = (&tmp as Ptr[Usize]) as Usize;
+	let _ = memcpy(addr, src, WORD_BYTES);
+	0 as I32
+}
+
+unsafe fn _bucket_addr(base: Usize, index: Usize) -> Usize {
+	base + (index * WORD_BYTES)
+}
+
+// `x mod m` without relying on `%`.
+unsafe fn _mod_usize(x: Usize, m: Usize) -> Usize {
+	if m == 0 as Usize {
+		return 0 as Usize;
+	}
+	let q: Usize = x / m;
+	x - (q * m)
+}
+
+unsafe fn _probe_next(idx: Usize, cap: Usize) -> Usize {
+	_mod_usize(idx + (1 as Usize), cap)
+}
+
+// Returns slot index (>=0) or -1 if not found.
+unsafe fn _probe_get(keys: Usize, states: Usize, cap: Usize, key: Usize, idx: Usize, steps: Usize) -> I32 {
+	if steps >= cap {
+		return -1 as I32;
+	}
+	let st: Usize = _load_usize(_bucket_addr(states, idx));
+	if st == 0 as Usize {
+		return -1 as I32;
+	}
+	if st == 1 as Usize {
+		let k: Usize = _load_usize(_bucket_addr(keys, idx));
+		if k == key {
+			return idx as I32;
+		}
+	}
+	let next: Usize = _probe_next(idx, cap);
+	_probe_get(keys, states, cap, key, next, steps + (1 as Usize))
+}
+
+// Find insert slot (existing key, tombstone, or empty). Returns slot index (>=0) or -1.
+unsafe fn _probe_put(keys: Usize, states: Usize, cap: Usize, key: Usize, idx: Usize, steps: Usize, first_free: I32) -> I32 {
+	if steps >= cap {
+		return -1 as I32;
+	}
+	let st: Usize = _load_usize(_bucket_addr(states, idx));
+	if st == 1 as Usize {
+		let k: Usize = _load_usize(_bucket_addr(keys, idx));
+		if k == key {
+			return idx as I32;
+		}
+	} else {
+		// empty or tombstone
+		let mut ff: I32 = first_free;
+		if ff < (0 as I32) {
+			ff = idx as I32;
+		}
+		if st == 0 as Usize {
+			return ff;
+		}
+		// tombstone: keep probing, but remember first_free
+		let next: Usize = _probe_next(idx, cap);
+		return _probe_put(keys, states, cap, key, next, steps + (1 as Usize), ff);
+	}
+
+	let next2: Usize = _probe_next(idx, cap);
+	_probe_put(keys, states, cap, key, next2, steps + (1 as Usize), first_free)
+}
+
+pub fn new(cap: Usize) -> HashMap {
+	unsafe {
+		let hdr_bytes: Usize = HDR_WORDS * WORD_BYTES;
+		let h: Usize = alloc(hdr_bytes);
+		if h == 0 as Usize {
+			return 0 as Usize;
+		}
+
+		let keys: Usize = alloc(cap * WORD_BYTES);
+		let vals: Usize = alloc(cap * WORD_BYTES);
+		let states: Usize = alloc(cap * WORD_BYTES);
+		if keys == 0 as Usize {
+			let _ = free(h);
+			return 0 as Usize;
+		}
+		if vals == 0 as Usize {
+			let _ = free(keys);
+			let _ = free(h);
+			return 0 as Usize;
+		}
+		if states == 0 as Usize {
+			let _ = free(vals);
+			let _ = free(keys);
+			let _ = free(h);
+			return 0 as Usize;
+		}
+
+		// zero states (all empty)
+		let _ = memset(states, 0 as I32, cap * WORD_BYTES);
+
+		let _ = _store_usize(_hdr_addr(h, 0 as Usize), keys);
+		let _ = _store_usize(_hdr_addr(h, 1 as Usize), vals);
+		let _ = _store_usize(_hdr_addr(h, 2 as Usize), states);
+		let _ = _store_usize(_hdr_addr(h, 3 as Usize), 0 as Usize);
+		let _ = _store_usize(_hdr_addr(h, 4 as Usize), cap);
+		return h;
+	}
+}
+
+pub fn len(m: HashMap) -> Usize {
+	if m == 0 as Usize {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_hdr_addr(m, 3 as Usize)) }
+}
+
+pub fn cap(m: HashMap) -> Usize {
+	if m == 0 as Usize {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_hdr_addr(m, 4 as Usize)) }
+}
+
+pub fn get(m: HashMap, key: Usize, default_val: Usize) -> Usize {
+	if m == 0 as Usize {
+		return default_val;
+	}
+	unsafe {
+		let keys: Usize = _load_usize(_hdr_addr(m, 0 as Usize));
+		let vals: Usize = _load_usize(_hdr_addr(m, 1 as Usize));
+		let states: Usize = _load_usize(_hdr_addr(m, 2 as Usize));
+		let c: Usize = _load_usize(_hdr_addr(m, 4 as Usize));
+		if c == 0 as Usize {
+			return default_val;
+		}
+		let start: Usize = _mod_usize(key, c);
+		let slot: I32 = _probe_get(keys, states, c, key, start, 0 as Usize);
+		if slot < (0 as I32) {
+			return default_val;
+		}
+		_load_usize(_bucket_addr(vals, slot as Usize))
+	}
+}
+
+// Inserts or updates. Returns the map handle (in-place for now).
+pub fn put(m: HashMap, key: Usize, val: Usize) -> HashMap {
+	if m == 0 as Usize {
+		return 0 as Usize;
+	}
+	unsafe {
+		let keys: Usize = _load_usize(_hdr_addr(m, 0 as Usize));
+		let vals: Usize = _load_usize(_hdr_addr(m, 1 as Usize));
+		let states: Usize = _load_usize(_hdr_addr(m, 2 as Usize));
+		let c: Usize = _load_usize(_hdr_addr(m, 4 as Usize));
+		if c == 0 as Usize {
+			return m;
+		}
+		let start: Usize = _mod_usize(key, c);
+		let neg_one: I32 = -1 as I32;
+		let slot: I32 = _probe_put(keys, states, c, key, start, 0 as Usize, neg_one);
+		if slot < (0 as I32) {
+			return m;
+		}
+
+		let slot_u: Usize = slot as Usize;
+		let st_addr: Usize = _bucket_addr(states, slot_u);
+		let old_st: Usize = _load_usize(st_addr);
+
+		let _ = _store_usize(_bucket_addr(keys, slot_u), key);
+		let _ = _store_usize(_bucket_addr(vals, slot_u), val);
+		let _ = _store_usize(st_addr, 1 as Usize);
+
+		if old_st != 1 as Usize {
+			let old_len: Usize = _load_usize(_hdr_addr(m, 3 as Usize));
+			let _ = _store_usize(_hdr_addr(m, 3 as Usize), old_len + (1 as Usize));
+		}
+		m
+	}
+}
+
+// pub fn free_map(m: HashMap) -> HashMap {
+// 	if m == 0 as Usize {
+// 		return 0 as Usize;
+// 	}
+// 	unsafe {
+// 		let keys: Usize = _load_usize(_hdr_addr(m, 0 as Usize));
+// 		let vals: Usize = _load_usize(_hdr_addr(m, 1 as Usize));
+// 		let states: Usize = _load_usize(_hdr_addr(m, 2 as Usize));
+// 		if keys != 0 as Usize { let _ = free(keys); }
+// 		if vals != 0 as Usize { let _ = free(vals); }
+// 		if states != 0 as Usize { let _ = free(states); }
+// 		let _ = free(m);
+// 		0 as Usize
+// 	}
+// }
+
+pub fn free_map(m: HashMap) -> HashMap {
+	if m == U0 {
+		return U0;
+	}
+	unsafe {
+		let keys: Usize = _load_usize(_hdr_addr(m, HDR_KEYS));
+		let vals: Usize = _load_usize(_hdr_addr(m, HDR_VALS));
+		let states: Usize = _load_usize(_hdr_addr(m, HDR_STATES));
+		let _ = free(keys);
+		let _ = free(vals);
+		let _ = free(states);
+		let _ = free(m);
+		U0
+	}
+}
+

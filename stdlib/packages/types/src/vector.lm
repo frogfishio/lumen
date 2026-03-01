@@ -1,0 +1,210 @@
+mod types::vector;
+
+use lumen::mem::*;
+
+pub type Vector = Usize;
+
+// Heap layout (header is 4 * Usize):
+//   [0] data_ptr (Usize)
+//   [1] len      (Usize)
+//   [2] cap      (Usize)
+//   [3] elem_sz  (Usize)
+
+// Header layout assumes 64-bit Usize in this experiment.
+const WORD_BYTES: Usize = 8 as Usize;
+const HDR_WORDS: Usize = 4 as Usize;
+const I32_BYTES: Usize = 4 as Usize;
+
+const OFF_DATA_PTR: Usize = 0 as Usize;
+const OFF_LEN: Usize = 8 as Usize;
+const OFF_CAP: Usize = 16 as Usize;
+const OFF_ELEM_SZ: Usize = 24 as Usize;
+
+unsafe fn _addr_data_ptr(v: Vector) -> Usize { v + OFF_DATA_PTR }
+unsafe fn _addr_len(v: Vector) -> Usize { v + OFF_LEN }
+unsafe fn _addr_cap(v: Vector) -> Usize { v + OFF_CAP }
+unsafe fn _addr_elem_sz(v: Vector) -> Usize { v + OFF_ELEM_SZ }
+
+unsafe fn _load_usize(addr: Usize) -> Usize {
+	let mut tmp: Usize = 0 as Usize;
+	let dst: Usize = (&tmp as Ptr[Usize]) as Usize;
+	let _ = memcpy(dst, addr, WORD_BYTES);
+	tmp
+}
+
+unsafe fn _store_usize(addr: Usize, val: Usize) -> I32 {
+	let mut tmp: Usize = val;
+	let src: Usize = (&tmp as Ptr[Usize]) as Usize;
+	let _ = memcpy(addr, src, WORD_BYTES);
+	0 as I32
+}
+
+unsafe fn _store_i32(addr: Usize, val: I32) -> I32 {
+	let mut tmp: I32 = val;
+	let src: Usize = (&tmp as Ptr[I32]) as Usize;
+	let _ = memcpy(addr, src, I32_BYTES);
+	0 as I32
+}
+
+pub fn new(elem_size: Usize) -> Vector {
+	unsafe {
+		let es: Usize = if elem_size < I32_BYTES { I32_BYTES } else { elem_size };
+		let hdr_bytes: Usize = HDR_WORDS * WORD_BYTES;
+		let h: Usize = alloc(hdr_bytes);
+		if h == (0 as Usize) {
+			return 0 as Usize;
+		}
+
+		let _ = _store_usize(_addr_data_ptr(h), 0 as Usize);
+		let _ = _store_usize(_addr_len(h), 0 as Usize);
+		let _ = _store_usize(_addr_cap(h), 0 as Usize);
+		let _ = _store_usize(_addr_elem_sz(h), es);
+		return h;
+	}
+}
+
+pub fn len(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_len(v)) }
+}
+
+pub fn cap(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_cap(v)) }
+}
+
+// Debug helpers: read raw header fields (single-arg to avoid any multi-arg ABI issues).
+pub fn raw_data_ptr(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_data_ptr(v)) }
+}
+
+pub fn raw_len(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_len(v)) }
+}
+
+pub fn raw_cap(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_cap(v)) }
+}
+
+pub fn raw_elem_sz(v: Vector) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe { _load_usize(_addr_elem_sz(v)) }
+}
+
+// Debug helper: read a raw header word (0..3).
+pub fn debug_word(v: Vector, word_index: Usize) -> Usize {
+	let _idx: Usize = word_index;
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	// Keep this stable: only support 0..3 via explicit offsets.
+	unsafe {
+		if word_index == (0 as Usize) { return raw_data_ptr(v); }
+		if word_index == (1 as Usize) { return raw_len(v); }
+		if word_index == (2 as Usize) { return raw_cap(v); }
+		if word_index == (3 as Usize) { return raw_elem_sz(v); }
+		0 as Usize
+	}
+}
+
+// Compute the address of an element slot (byte address), without assuming a typed pointer ABI.
+pub fn elem_addr(v: Vector, index: Usize) -> Usize {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe {
+		let data: Usize = _load_usize(_addr_data_ptr(v));
+		let elem_sz: Usize = _load_usize(_addr_elem_sz(v));
+		data + (index * elem_sz)
+	}
+}
+
+// Type-agnostic push: copies `elem_sz` bytes from `src_ptr` into the vector.
+// Callers typically pass `src_ptr = (&tmp as Ptr[T]) as Usize`.
+pub fn push_from_ptr(v: Vector, src_ptr: Usize) -> Vector {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	if src_ptr == (0 as Usize) {
+		return v;
+	}
+
+	unsafe {
+		let cur_len: Usize = _load_usize(_addr_len(v));
+		let cur_cap: Usize = _load_usize(_addr_cap(v));
+		let elem_sz: Usize = _load_usize(_addr_elem_sz(v));
+
+		if cur_cap <= cur_len {
+			let new_cap: Usize = if cur_cap == (0 as Usize) { 4 as Usize } else { cur_cap * (2 as Usize) };
+			let new_bytes: Usize = new_cap * elem_sz;
+			let new_data: Usize = alloc(new_bytes);
+			if new_data == (0 as Usize) {
+				return v;
+			}
+
+			let old_data: Usize = _load_usize(_addr_data_ptr(v));
+			if old_data != (0 as Usize) {
+				let copy_bytes: Usize = cur_len * elem_sz;
+				let _ = memcpy(new_data, old_data, copy_bytes);
+				let _ = free(old_data);
+			}
+
+			let _ = _store_usize(_addr_data_ptr(v), new_data);
+			let _ = _store_usize(_addr_cap(v), new_cap);
+		}
+
+		let data: Usize = _load_usize(_addr_data_ptr(v));
+		let dst: Usize = data + (cur_len * elem_sz);
+		let next_len: Usize = cur_len + (1 as Usize);
+		let _ = _store_usize(_addr_len(v), next_len);
+		let _ = memcpy(dst, src_ptr, elem_sz);
+		v
+	}
+}
+
+// Back-compat: i32 push.
+pub fn push(v: Vector, val: I32) -> Vector {
+	push_i32(v, val)
+}
+
+// Back-compat alias.
+pub fn push_i32(v: Vector, val: I32) -> Vector {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe {
+		let tmp: I32 = val;
+		let src: Usize = (&tmp as Ptr[I32]) as Usize;
+		push_from_ptr(v, src)
+	}
+}
+
+pub fn free_vec(v: Vector) -> Vector {
+	if v == (0 as Usize) {
+		return 0 as Usize;
+	}
+	unsafe {
+		let data: Usize = _load_usize(_addr_data_ptr(v));
+		if data != (0 as Usize) {
+			let _ = free(data);
+		}
+		let _ = free(v);
+		return 0 as Usize;
+	}
+}
+

@@ -1,0 +1,5 @@
+mod clib;
+
+pub extern "C" unsafe fn puts(s: Ptr[U8]) -> I32;
+
+pub extern "C" unsafe fn putchar(c: I32) -> I32;

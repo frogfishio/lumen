@@ -1,0 +1,473 @@
+mod lumen::json;
+
+use lumen::string;
+use lumen::slice;
+
+use lumen::utf8;
+
+unsafe fn _u8_at(bytes: Slice[U8], i: Usize) -> U8 {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	p[i as I64]!
+}
+
+// Cursor-style helpers over (bytes, index). This avoids current sircc/ast2sir
+// issues with returning small UDTs (Cursor) via temporaries.
+
+pub fn skip_ws(bytes: Slice[U8], start: Usize) -> Usize {
+	string::skip_ascii_ws(bytes, start)
+}
+
+
+
+// Returns the next byte as an I32 in range 0..255, or -1 if at end.
+pub fn peek_byte(bytes: Slice[U8], i: Usize) -> I32 {
+	let l: Usize = slice::len[U8](bytes);
+	if i < l {
+		unsafe {
+			let p: Ptr[U8] = slice::ptr[U8](bytes);
+			(p[i as I64]! as I32)
+		}
+	} else {
+		-1 as I32
+	}
+}
+
+// Parses the JSON literal `null`.
+// Returns the index after the token, or -1 on failure.
+pub fn parse_null(bytes: Slice[U8], start: Usize) -> I64 {
+	let i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	let need: Usize = 4 as Usize;
+	if i + need > l {
+		return -1 as I64;
+	}
+	unsafe {
+		let p: Ptr[U8] = slice::ptr[U8](bytes);
+		let n0: U8 = p[i as I64]!;
+		let n1: U8 = p[(i + (1 as Usize)) as I64]!;
+		let n2: U8 = p[(i + (2 as Usize)) as I64]!;
+		let n3: U8 = p[(i + (3 as Usize)) as I64]!;
+		if n0 == (110 as U8) && n1 == (117 as U8) && n2 == (108 as U8) && n3 == (108 as U8) {
+			(i + need) as I64
+		} else {
+			-1 as I64
+		}
+	}
+}
+
+// Parses the JSON literal `true`.
+// Returns the index after the token, or -1 on failure.
+pub fn parse_true(bytes: Slice[U8], start: Usize) -> I64 {
+	let i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	let need: Usize = 4 as Usize;
+	if i + need > l {
+		return -1 as I64;
+	}
+	unsafe {
+		let p: Ptr[U8] = slice::ptr[U8](bytes);
+		let t0: U8 = p[i as I64]!;
+		let t1: U8 = p[(i + (1 as Usize)) as I64]!;
+		let t2: U8 = p[(i + (2 as Usize)) as I64]!;
+		let t3: U8 = p[(i + (3 as Usize)) as I64]!;
+		if t0 == (116 as U8) && t1 == (114 as U8) && t2 == (117 as U8) && t3 == (101 as U8) {
+			(i + need) as I64
+		} else {
+			-1 as I64
+		}
+	}
+}
+
+// Parses the JSON literal `false`.
+// Returns the index after the token, or -1 on failure.
+pub fn parse_false(bytes: Slice[U8], start: Usize) -> I64 {
+	let i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	let need: Usize = 5 as Usize;
+	if i + need > l {
+		return -1 as I64;
+	}
+	unsafe {
+		let p: Ptr[U8] = slice::ptr[U8](bytes);
+		let f0: U8 = p[i as I64]!;
+		let f1: U8 = p[(i + (1 as Usize)) as I64]!;
+		let f2: U8 = p[(i + (2 as Usize)) as I64]!;
+		let f3: U8 = p[(i + (3 as Usize)) as I64]!;
+		let f4: U8 = p[(i + (4 as Usize)) as I64]!;
+		if f0 == (102 as U8) && f1 == (97 as U8) && f2 == (108 as U8) && f3 == (115 as U8) && f4 == (101 as U8) {
+			(i + need) as I64
+		} else {
+			-1 as I64
+		}
+	}
+}
+
+// Returns an enum-ish tag for which JSON value starts at `start` (after ws):
+// 0 = null
+// 1 = true
+// 2 = false
+// -1 = unknown / EOF
+pub fn value_kind(bytes: Slice[U8], start: Usize) -> I32 {
+	let i: Usize = skip_ws(bytes, start);
+	let b: I32 = peek_byte(bytes, i);
+	if b == (110 as I32) {
+		0 as I32
+	} else {
+		if b == (116 as I32) {
+			1 as I32
+		} else {
+			if b == (102 as I32) {
+				2 as I32
+			} else {
+				-1 as I32
+			}
+		}
+	}
+}
+
+// Parses one of {null,true,false}.
+// Returns the index after the token, or -1 on failure / non-literal.
+pub fn parse_literal(bytes: Slice[U8], start: Usize) -> I64 {
+	let k: I32 = value_kind(bytes, start);
+	if k == (0 as I32) {
+		parse_null(bytes, start)
+	} else {
+		if k == (1 as I32) {
+			parse_true(bytes, start)
+		} else {
+			if k == (2 as I32) {
+				parse_false(bytes, start)
+			} else {
+				-1 as I64
+			}
+		}
+	}
+}
+
+// Scans a JSON string at `start` (after skipping JSON ws).
+// Validates JSON string rules + UTF-8 well-formedness.
+// Returns index after closing '"', or -1 on failure.
+pub fn scan_string(bytes: Slice[U8], start: Usize) -> I64 {
+	let mut i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	if i >= l {
+		return -1 as I64;
+	}
+	let q: U8 = unsafe { _u8_at(bytes, i) };
+	if q != (34 as U8) {
+		return -1 as I64;
+	}
+	// consume opening quote
+	i = i + (1 as Usize);
+	while i < l {
+		let b0: U8 = unsafe { _u8_at(bytes, i) };
+		let b0s: I32 = b0 as I32;
+		let b0u: I32 = if b0s < (0 as I32) { b0s + (256 as I32) } else { b0s };
+		if b0 == (34 as U8) {
+			return (i + (1 as Usize)) as I64;
+		}
+		if b0 == (92 as U8) {
+			let i1: Usize = i + (1 as Usize);
+			if i1 >= l { return -1 as I64; }
+			let esc: U8 = unsafe { _u8_at(bytes, i1) };
+			if esc == (34 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (92 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (47 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (98 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (102 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (110 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (114 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (116 as U8) { i = i + (2 as Usize); continue; }
+			if esc == (117 as U8) {
+				let u0: I32 = utf8::decode_u16_hex4_at(bytes, i + (2 as Usize));
+				if u0 < (0 as I32) { return -1 as I64; }
+				if u0 >= (0xD800 as I32) {
+					if u0 <= (0xDBFF as I32) {
+						let j: Usize = i + (6 as Usize);
+						let j1: Usize = j + (1 as Usize);
+						if j1 >= l { return -1 as I64; }
+						let b_slash: U8 = unsafe { _u8_at(bytes, j) };
+						let b_u: U8 = unsafe { _u8_at(bytes, j1) };
+						if b_slash != (92 as U8) { return -1 as I64; }
+						if b_u != (117 as U8) { return -1 as I64; }
+						let u1: I32 = utf8::decode_u16_hex4_at(bytes, j + (2 as Usize));
+						if u1 < (0 as I32) { return -1 as I64; }
+						if u1 < (0xDC00 as I32) { return -1 as I64; }
+						if u1 > (0xDFFF as I32) { return -1 as I64; }
+						i = i + (12 as Usize);
+						continue;
+					} else {
+						if u0 <= (0xDFFF as I32) { return -1 as I64; }
+					}
+				}
+				i = i + (6 as Usize);
+				continue;
+			}
+			return -1 as I64;
+		}
+		if b0u < (32 as I32) {
+			return -1 as I64;
+		}
+		if b0u < (128 as I32) {
+			i = i + (1 as Usize);
+			continue;
+		}
+		// UTF-8 invariant: bytes in 0x80..0xC1 are never valid as a leading byte.
+		// This also rejects overlong 2-byte sequences (0xC0,0xC1).
+		if b0u < (0xC2 as I32) {
+			return -1 as I64;
+		}
+		let next: I64 = utf8::scan1(bytes, i);
+		if next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = next as Usize;
+		continue;
+	}
+	-1 as I64
+}
+
+fn _is_digit(b: U8) -> bool {
+	b >= (48 as U8) && b <= (57 as U8)
+}
+
+// Scans a JSON number at `start` (after skipping JSON ws).
+// Validates RFC 8259 number grammar.
+// Returns index after the number, or -1 on failure.
+pub fn scan_number(bytes: Slice[U8], start: Usize) -> I64 {
+	let mut i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	if i >= l {
+		return -1 as I64;
+	}
+
+	let mut b: U8 = unsafe { _u8_at(bytes, i) };
+	if b == (45 as U8) {
+		i = i + (1 as Usize);
+		if i >= l {
+			return -1 as I64;
+		}
+		b = unsafe { _u8_at(bytes, i) };
+	}
+
+	// int
+	if b == (48 as U8) {
+		i = i + (1 as Usize);
+		// Disallow leading zero followed by another digit.
+		if i < l {
+			let d: U8 = unsafe { _u8_at(bytes, i) };
+			if _is_digit(d) {
+				return -1 as I64;
+			}
+		}
+	} else {
+		if b >= (49 as U8) {
+			if b <= (57 as U8) {
+				i = i + (1 as Usize);
+				while i < l {
+					let d: U8 = unsafe { _u8_at(bytes, i) };
+					if _is_digit(d) {
+						i = i + (1 as Usize);
+					} else {
+						break;
+					}
+				}
+			} else {
+				return -1 as I64;
+			}
+		} else {
+			return -1 as I64;
+		}
+	}
+
+	// frac
+	if i < l {
+		let dot: U8 = unsafe { _u8_at(bytes, i) };
+		if dot == (46 as U8) {
+			i = i + (1 as Usize);
+			if i >= l {
+				return -1 as I64;
+			}
+			let d0: U8 = unsafe { _u8_at(bytes, i) };
+			if !_is_digit(d0) {
+				return -1 as I64;
+			}
+			i = i + (1 as Usize);
+			while i < l {
+				let d: U8 = unsafe { _u8_at(bytes, i) };
+				if _is_digit(d) {
+					i = i + (1 as Usize);
+				} else {
+					break;
+				}
+			}
+		}
+	}
+
+	// exp
+	if i < l {
+		let e: U8 = unsafe { _u8_at(bytes, i) };
+		if e == (101 as U8) || e == (69 as U8) {
+			i = i + (1 as Usize);
+			if i >= l {
+				return -1 as I64;
+			}
+			let s: U8 = unsafe { _u8_at(bytes, i) };
+			if s == (43 as U8) || s == (45 as U8) {
+				i = i + (1 as Usize);
+				if i >= l {
+					return -1 as I64;
+				}
+			}
+			let d0: U8 = unsafe { _u8_at(bytes, i) };
+			if !_is_digit(d0) {
+				return -1 as I64;
+			}
+			i = i + (1 as Usize);
+			while i < l {
+				let d: U8 = unsafe { _u8_at(bytes, i) };
+				if _is_digit(d) {
+					i = i + (1 as Usize);
+				} else {
+					break;
+				}
+			}
+		}
+	}
+
+	i as I64
+}
+
+// Scans any JSON value at `start` (after skipping JSON ws).
+// Returns index after the value, or -1 on failure.
+pub fn scan_value(bytes: Slice[U8], start: Usize) -> I64 {
+	let i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	if i >= l {
+		return -1 as I64;
+	}
+	let b: U8 = unsafe { _u8_at(bytes, i) };
+	if b == (34 as U8) {
+		return scan_string(bytes, i);
+	}
+	if b == (110 as U8) || b == (116 as U8) || b == (102 as U8) {
+		return parse_literal(bytes, i);
+	}
+	if b == (91 as U8) {
+		return scan_array(bytes, i);
+	}
+	if b == (123 as U8) {
+		return scan_object(bytes, i);
+	}
+	if b == (45 as U8) || _is_digit(b) {
+		return scan_number(bytes, i);
+	}
+	-1 as I64
+}
+
+// Scans a JSON array at `start` (after skipping JSON ws).
+// Returns index after the closing ']', or -1 on failure.
+pub fn scan_array(bytes: Slice[U8], start: Usize) -> I64 {
+	let mut i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	if i >= l {
+		return -1 as I64;
+	}
+	let b0: U8 = unsafe { _u8_at(bytes, i) };
+	if b0 != (91 as U8) {
+		return -1 as I64;
+	}
+	i = i + (1 as Usize);
+	i = skip_ws(bytes, i);
+	if i >= l {
+		return -1 as I64;
+	}
+	let b1: U8 = unsafe { _u8_at(bytes, i) };
+	if b1 == (93 as U8) {
+		return (i + (1 as Usize)) as I64;
+	}
+	while true {
+		let next: I64 = scan_value(bytes, i);
+		if next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = next as Usize;
+		i = skip_ws(bytes, i);
+		if i >= l {
+			return -1 as I64;
+		}
+		let sep: U8 = unsafe { _u8_at(bytes, i) };
+		if sep == (44 as U8) {
+			i = i + (1 as Usize);
+			i = skip_ws(bytes, i);
+			continue;
+		}
+		if sep == (93 as U8) {
+			return (i + (1 as Usize)) as I64;
+		}
+		return -1 as I64;
+	}
+	-1 as I64
+}
+
+// Scans a JSON object at `start` (after skipping JSON ws).
+// Returns index after the closing '}', or -1 on failure.
+pub fn scan_object(bytes: Slice[U8], start: Usize) -> I64 {
+	let mut i: Usize = skip_ws(bytes, start);
+	let l: Usize = slice::len[U8](bytes);
+	if i >= l {
+		return -1 as I64;
+	}
+	let b0: U8 = unsafe { _u8_at(bytes, i) };
+	if b0 != (123 as U8) {
+		return -1 as I64;
+	}
+	i = i + (1 as Usize);
+	i = skip_ws(bytes, i);
+	if i >= l {
+		return -1 as I64;
+	}
+	let b1: U8 = unsafe { _u8_at(bytes, i) };
+	if b1 == (125 as U8) {
+		return (i + (1 as Usize)) as I64;
+	}
+	while true {
+		let key_next: I64 = scan_string(bytes, i);
+		if key_next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = key_next as Usize;
+		i = skip_ws(bytes, i);
+		if i >= l {
+			return -1 as I64;
+		}
+		let colon: U8 = unsafe { _u8_at(bytes, i) };
+		if colon != (58 as U8) {
+			return -1 as I64;
+		}
+		i = i + (1 as Usize);
+		i = skip_ws(bytes, i);
+		let val_next: I64 = scan_value(bytes, i);
+		if val_next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = val_next as Usize;
+		i = skip_ws(bytes, i);
+		if i >= l {
+			return -1 as I64;
+		}
+		let sep: U8 = unsafe { _u8_at(bytes, i) };
+		if sep == (44 as U8) {
+			i = i + (1 as Usize);
+			i = skip_ws(bytes, i);
+			continue;
+		}
+		if sep == (125 as U8) {
+			return (i + (1 as Usize)) as I64;
+		}
+		return -1 as I64;
+	}
+	-1 as I64
+}
+
+// todo: serialize, and deserialize json values

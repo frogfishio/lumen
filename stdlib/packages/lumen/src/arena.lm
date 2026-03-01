@@ -1,0 +1,28 @@
+mod lumen::arena;
+
+// The Killer Feature: First-class Arena with syntactic with blocks
+// lumenwith arena := Arena.new(64 * 1024) {          // linear bump allocator, 64 KiB
+//     let v: Vector[I32] = Vector.new_in(&arena); // zero-cost, no global allocator
+//     let s: String = String.from_bytes_in(&arena, b"hello world");
+
+//     let json = parse_json_in(&arena, input);    // everything stays in this arena
+
+//     // you can even pass the arena down
+//     process_data(&arena, &v);
+// } // ← everything freed here, in one shot, no destructor calls, no leaks, no GC
+// Why this would make every other language say “I wish I thought of that”
+
+// LanguageCurrent painWhat Lumen gives them envy forRustbumpalo is external, ugly, still needs &mut everywhereBuilt-in syntax, zero boilerplate, visible scopeZigYou pass allocator to literally everythingSyntactic with + default Global when you wantGoGC pressure on hot paths, no controlOpt-in arenas for hot loops/parsers, no GC taxC++std::pmr is verbose, exception-heavyClean, no exceptions, no hidden costsCManual arenas are copy-paste hellThe thing we’ve been hand-rolling for 50 years
+// It is pure hindsight:
+
+// We all know arenas/linear allocators are the fastest and safest way to do temporary work (parsers, compilers, JSON, game frames, build systems…).
+// Yet no mainstream language made it this ergonomic and explicit.
+
+// Extra Lumen flavor:
+
+// Arena is just a struct with bump: Usize, end: Usize — you can see the implementation.
+// with is desugared to a normal block + defer arena.reset() (or free if you want backing storage).
+// You can nest them, pass &arena around, or use Global when you want heap.
+// Works perfectly with your new generics/traits: Vector[T].new_in, String.new_in, etc.
+
+// This single feature would make Lumen the default choice for any performance-critical or memory-sensitive codebase.

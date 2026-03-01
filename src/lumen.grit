@@ -6,6 +6,26 @@
 ;; Constraints:
 ;; - No nested block comments; only line and block comments.
 ;; - Grammar favors deterministic, non-left-recursive operator handling.
+;;
+;; ---------------------------
+;; Typed-AST note: `typeinfo`
+;; ---------------------------
+;; Stage 4 artifacts may carry a canonical type dictionary under:
+;;   meta.typeinfo  (preferred)
+;;   meta.type_tab  (legacy alias; same payload)
+;;
+;; This is LANGUAGE-AGNOSTIC boundary data (not a Lumenism): it exists so downstream
+;; lowering can be purely mechanical when it encounters nominal record/enum types and
+;; concrete instantiations (e.g. `Box(i32)`), without guessing from surface spellings.
+;;
+;; Minimal shape (v=1):
+;;   {
+;;     "v": 1,
+;;     "decls": { "Box": { "kind":"record", "params":["T"], "fields":[{"name":"v","type_id":"T"}] } },
+;;     "insts": { "Box(i32)": { "head":"Box", "args":["i32"], "kind":"record", "fields":[{"name":"v","type_id":"i32"}] } }
+;;   }
+;;
+;; See: docs/TYPEINFO.md (normative contract).
 
 module Lumen;
 
@@ -17,7 +37,8 @@ backend {
 
 tokens {
   trivia keep WS = /[ \t\r\n]+/;
-  trivia keep LineComment = /\/\/[\x00-\x09\x0B-\x0C\x0E-\xFF]*/;
+  ;; Line comments are raw text until newline; allow any UTF-8 / Unicode chars.
+  trivia keep LineComment = /\/\/[^\r\n]*/;
   trivia keep BlockComment = /\/\*([^*]|\*+[^*\/])*\*+\//;
 
   ;; Never matches; used to satisfy optional tok fields canonically.
@@ -33,6 +54,7 @@ tokens {
   ElseKW = "else";
   MatchKW = "match";
   DeferKW = "defer";
+  WithKW = "with";
   TryKW = "try";
   ReturnKW = "return";
   WhileKW = "while";
@@ -64,6 +86,13 @@ tokens {
   MacroKW = "macro";
   TestKW = "test";
   AsmKW = "asm";
+  AlignofKW = "alignof";
+  SizeofKW = "sizeof";
+  AssertBangKW = "assert!";
+  AssertKW = "assert";
+  InvariantKW = "invariant";
+  GuardKW = "guard";
+  TypeArgsStart = "@<";
 
   ;; Identifiers
   ;;
@@ -227,8 +256,10 @@ rules {
 
     UseCallee = id:@UseKW => Name(id);
     ;; Represent grouped use-trees structurally to avoid erasure.
+    ;; NOTE: This form is only for grouped imports like `use M::{a,b}`.
+    ;; Plain `use M;` should lower to Import, not a Call.
     ;; Note: Call.args is a node, so we can pass the UseTreeGroup node directly.
-    UseItemGroup = Attrs vis:Visibility? callee:UseCallee args:UseTreeGroup? Semi? => Call(callee, args);
+    UseItemGroup = Attrs vis:Visibility? callee:UseCallee args:UseTreeGroup Semi? => Call(callee, args);
 
     ;; Grouped-list sugar:
     ;;   use M {a, b, c};
@@ -243,8 +274,10 @@ rules {
     UsePrefixCalleeLower = id:@IdentLower => Name(id);
     UsePrefixCalleeSelf = id:@SelfKW => Name(id);
     UsePrefixCalleeSuper = id:@SuperKW => Name(id);
-    UsePrefixGroup = callee:UsePrefixCallee args:UseTreeGroupBare? => Call(callee, args);
-    UseItemGroupSugar = Attrs vis:Visibility? callee:UseCallee args:UsePrefixGroup? Semi => Call(callee, args);
+    ;; NOTE: Require braces; otherwise this would greedily match *all* `use M;` forms and
+    ;; defeat the canonical Import lowering path.
+    UsePrefixGroup = callee:UsePrefixCallee args:UseTreeGroupBare => Call(callee, args);
+    UseItemGroupSugar = Attrs vis:Visibility? callee:UseCallee args:UsePrefixGroup Semi => Call(callee, args);
 
     UseTree = UseTreeSimpleAs | UseTreeSimple | UseTreeGroup;
     UseTreeSimple = UseTreeSimplePath | UseTreeSimpleIdent | UseTreeSimpleSelf | UseTreeSimpleSuper;
@@ -281,12 +314,14 @@ rules {
   ;; -----------------------------
 
   ;; Traits/impls are parsed for the AST-only boundary.
-  ;; We lower them to nested `Unit`s to stay within canonical intrinsics.
+  ;; We lower them to helper intrinsics (TraitDecl/ImplDecl) which MUST fold away by Stage 4.
+  ;; This keeps the strict AST ABI canonical while allowing the frontend to commit method/impl
+  ;; semantics upstream (no downstream guessing).
   ;; Trait method signatures have no body; represent them as a Proc with a synthetic Nil body.
   EmptyBody = => Nil();
   TraitItem = TraitItemUpper | TraitItemLower;
-  TraitItemUpper = Attrs vis:Visibility? TraitKW (name:@IdentUpper)? gen:GenericParams? where:WhereClause? LBrace items:TraitMember* RBrace => LUnit(name, items);
-  TraitItemLower = Attrs vis:Visibility? TraitKW (name:@IdentLower)? gen:GenericParams? where:WhereClause? LBrace items:TraitMember* RBrace => LUnit(name, items);
+  TraitItemUpper = Attrs vis:Visibility? TraitKW (name:@IdentUpper)? gen:GenericParams? where:WhereClause? LBrace items:TraitMember* RBrace => LTrait(name, items);
+  TraitItemLower = Attrs vis:Visibility? TraitKW (name:@IdentLower)? gen:GenericParams? where:WhereClause? LBrace items:TraitMember* RBrace => LTrait(name, items);
   TraitMember = TraitFnSig;
   TraitFnSig = TraitFnSigUpper | TraitFnSigLower;
   TraitFnSigUpper = Attrs vis:Visibility? unsafe_kw:@UnsafeKW? fn_kw:@FnKW name:@IdentUpper
@@ -297,7 +332,7 @@ rules {
                Semi
                decls:VarDecl*
                body:EmptyBody
-               => LProc(name, params, ret, decls, body);
+               => LProc(name, gen, params, ret, decls, body);
 
   TraitFnSigLower = Attrs vis:Visibility? unsafe_kw:@UnsafeKW? fn_kw:@FnKW name:@IdentLower
                gen:GenericParams?
@@ -307,17 +342,17 @@ rules {
                Semi
                decls:VarDecl*
                body:EmptyBody
-               => LProc(name, params, ret, decls, body);
+               => LProc(name, gen, params, ret, decls, body);
 
   ImplItem = ImplItemUpper | ImplItemLower;
   ImplItemUpper = Attrs vis:Visibility? unsafe_kw:@UnsafeKW? ImplKW gen:GenericParams?
            (name:@IdentUpper)? (LBrack args:TypeList? RBrack)?
            ForKW type:Type where:WhereClause?
-           LBrace items:ImplMember* RBrace => LUnit(name, items);
+           LBrace items:ImplMember* RBrace => LImpl(name, type, items);
   ImplItemLower = Attrs vis:Visibility? unsafe_kw:@UnsafeKW? ImplKW gen:GenericParams?
            (name:@IdentLower)? (LBrack args:TypeList? RBrack)?
            ForKW type:Type where:WhereClause?
-           LBrace items:ImplMember* RBrace => LUnit(name, items);
+           LBrace items:ImplMember* RBrace => LImpl(name, type, items);
   ImplMember = FnItem;
 
   ;; `mod name { ... }`.
@@ -341,7 +376,7 @@ rules {
            where:WhereClause?
            decls:VarDecl*
            body:Block
-           => LProc(name, params, ret, decls, body);
+           => LProc(name, gen, params, ret, decls, body);
 
   FnItemLower = Attrs vis:Visibility? unsafe_kw:@UnsafeKW? fn_kw:@FnKW name:@IdentLower
            gen:GenericParams?
@@ -350,7 +385,7 @@ rules {
            where:WhereClause?
            decls:VarDecl*
            body:Block
-           => LProc(name, params, ret, decls, body);
+           => LProc(name, gen, params, ret, decls, body);
 
   WhereClause = WhereKW items:WherePred (Comma items:WherePred)*;
   WherePred = name:Type Colon trait:Type;
@@ -507,6 +542,9 @@ rules {
   ;; -----------------------------
 
   Type = FnType | TypeArray | TypeTuple | TypeApp | TypeRef;
+  ;; Stage 4 cutoff signature uses this name for `sizeof(T)`-style operators.
+  ;; Canonically this just means "a type syntax node".
+  TypeNameSyntax = Type;
 
   ;; Function type: `fn(T1, T2, ...) -> R`
   ;; Model params as a list of types (not patterns).
@@ -554,6 +592,13 @@ rules {
              | BreakStmtInBlock
              | ContinueStmtInBlock
              | DeferStmtInBlock
+             | DeferExprStmtInBlock
+             | WithStmtInBlock
+             | GuardStmtInBlock
+             | WhileLetStmtInBlock
+             | AssertStmtInBlock
+             | InvariantStmtInBlock
+             | StaticAssertStmtInBlock
              | WhileStmt
              | ForStmt
              | LoopStmt
@@ -577,6 +622,39 @@ rules {
   BreakStmtInBlock = BreakKW Semi? => Break();
   ContinueStmtInBlock = ContinueKW Semi? => Continue();
   DeferStmtInBlock = callee:DeferCallee args:Block? Semi? => Call(callee, args);
+  ;; Sugar: `defer cleanup(x);` => Call(defer, Block([cleanup(x)]))
+  DeferExprStmtInBlock = callee:DeferCallee expr:Expr Semi? => DeferExpr(callee, expr);
+
+  ;; `with (x = acquire()) defer cleanup(x) { ... }`
+  ;;
+  ;; Design:
+  ;; - `with` is surface sugar, but we encode it as a Tier B helper intrinsic
+  ;;   (`WithDefer`) so we can fold it away deterministically in Stage 4 without
+  ;;   relying on spec-time list construction tricks.
+  ;; - This keeps the strict Stage 4 boundary canonical: `WithDefer` MUST fold
+  ;;   into a canonical `{ let; defer { ... }; { body } }`-style block.
+  ;;
+  ;; The binder uses the same canonical `VarPat` encoding as `let`.
+  WithBinding = pat:Pat (Colon type:Type)? Eq init:Expr => LVarPat(pat, type, init);
+  WithStmtInBlock =
+      Attrs WithKW
+      LParen bind:WithBinding RParen
+      callee:DeferCallee cleanup:Expr
+      body:Block
+      Semi?
+      => WithDefer(bind, callee, cleanup, body);
+
+  ;; `guard cond else { ... }`
+  ;; Sugar only: folds to `if cond { } else { ... }`.
+  GuardStmtInBlock = Attrs GuardKW cond:Expr ElseKW els:Block Semi? => Guard(cond, els);
+
+  ;; `while let pat = expr { ... }`
+  ;; Sugar only: folds to a `loop { match expr { pat => body, _ => break } }`.
+  WhileLetStmtInBlock = WhileKW LetKW pat:Pat Eq expr:Expr body:Stmt => WhileLet(pat, expr, body);
+
+  AssertStmtInBlock = AssertKW LParen cond:Expr (Comma msg:Expr)? RParen Semi? => AssertStmt(cond, msg);
+  InvariantStmtInBlock = InvariantKW LParen cond:Expr (Comma msg:Expr)? RParen Semi? => InvariantStmt(cond, msg);
+  StaticAssertStmtInBlock = AssertBangKW LParen cond:Expr (Comma msg:Expr)? RParen Semi? => StaticAssertStmt(cond, msg);
   ;; Expression statements are represented using a fold-away helper node.
   ;; Stage 4 must fold `Paren(expr)` away, yielding a canonical expression node.
   ;; (We cannot write `=> expr;` because semantics clauses must be calls.)
@@ -587,7 +665,7 @@ rules {
   ;; Note: `Stmt` is still used by `While.body` and loop bodies, where semicolon
   ;; handling is not part of the construct.
   ;; Note: `Stmt` is used for loop bodies; allow blocks there.
-  Stmt = LetDiscardStmt | LetStmt | WhileStmt | ForStmt | LoopStmt | BreakStmt | ContinueStmt | DeferStmt | ReturnStmt | Block | Expr;
+  Stmt = LetDiscardStmt | LetStmt | WithStmt | GuardStmt | WhileLetStmt | AssertStmtS | InvariantStmtS | StaticAssertStmtS | WhileStmt | ForStmt | LoopStmt | BreakStmt | ContinueStmt | DeferStmt | ReturnStmt | Block | Expr;
 
   ;; Let: accept patterns and lower them explicitly.
   LetStmt = Attrs LetKW mut_kw:@MutKW? pat:Pat (Colon type:Type)? Eq init:Expr?
@@ -601,6 +679,20 @@ rules {
   ;; Lower `defer { ... }` as a plain call node in statement position.
   DeferStmt = callee:DeferCallee args:Block? => Call(callee, args);
   DeferCallee = id:@DeferKW => Name(id);
+
+  WithStmt =
+      Attrs WithKW
+      LParen bind:WithBinding RParen
+      callee:DeferCallee cleanup:Expr
+      body:Block
+      => WithDefer(bind, callee, cleanup, body);
+
+  GuardStmt = Attrs GuardKW cond:Expr ElseKW els:Block => Guard(cond, els);
+  WhileLetStmt = WhileKW LetKW pat:Pat Eq expr:Expr body:Stmt => WhileLet(pat, expr, body);
+
+  AssertStmtS = AssertKW LParen cond:Expr (Comma msg:Expr)? RParen => AssertStmt(cond, msg);
+  InvariantStmtS = InvariantKW LParen cond:Expr (Comma msg:Expr)? RParen => InvariantStmt(cond, msg);
+  StaticAssertStmtS = AssertBangKW LParen cond:Expr (Comma msg:Expr)? RParen => StaticAssertStmt(cond, msg);
 
   ReturnStmt = ReturnKW value:Expr? => Return(value);
 
@@ -648,7 +740,7 @@ rules {
   ;; Our cert fixtures currently omit them; since whitespace is trivia we
   ;; cannot implement semicolon insertion here, so we accept optional `;`.
 
-  Expr = IfExpr | MatchExpr | AssignExpr;
+  Expr = IfLetExpr | IfExpr | MatchExpr | AssignExpr;
 
   ;; Assignment is lowest precedence and right-associative.
   AssignExpr = AssignBin | OrExpr;
@@ -662,6 +754,10 @@ rules {
   ;; `if` (used as an expression in Lumen). We lower to the generic `If` node.
   IfExpr = IfKW cond:Expr then:Block (ElseKW else:ElseBranch)? => If(cond, then, else);
   ElseBranch = Block | IfExpr;
+
+  ;; `if let pat = expr { ... } else { ... }`
+  ;; Sugar only: folds to `match expr { pat => then, _ => else }`.
+  IfLetExpr = IfKW LetKW pat:Pat Eq expr:Expr then:Block (ElseKW els:ElseBranch)? => IfLet(pat, expr, then, els);
 
   MatchExpr = MatchKW cond:Expr LBrace arms:MatchArm* RBrace => LMatch(cond, arms);
   MatchArm = pat:Pat (IfKW guard:Expr)? FatArrow body:Expr? Comma? => LMatchArm(pat, guard, body);
@@ -792,7 +888,19 @@ rules {
   ;; This does allow `{...}` to appear in expression-statement position via
   ;; `ExprStmtInBlock`, so keep an eye on any LALR ambiguity around
   ;; `T { field: expr }` struct literals inside blocks.
-  Primary = Block | UnsafeBlockExpr | AsmExpr | TupleExpr | ArrayExpr | StructLitExpr | NameExpr | IntExpr | HexIntExpr | RealExpr | StringExpr | RawStringExpr | BytesExpr | CStringExpr | CharExpr | BoolExpr | ParenExpr;
+  Primary = Block | UnsafeBlockExpr | AsmExpr | GenCallExpr | AlignofTypeExpr | SizeofTypeExpr | TupleExpr | ArrayExpr | StructLitExpr | NameExpr | IntExpr | HexIntExpr | RealExpr | StringExpr | RawStringExpr | BytesExpr | CStringExpr | CharExpr | BoolExpr | ParenExpr;
+
+  ;; Explicit generic call with committed type args.
+  ;; Syntax is intentionally unambiguous and explicit: `f@<T,U,...>(args...)`.
+  GenCallExpr = callee:NameExpr TypeArgsStart type_args:TypeList? Gt LParen args:ArgList? RParen => CallGen(callee, type_args, args);
+
+  ;; Compile-time type alignment query.
+  ;; Canonical lowering uses GL intrinsic `AlignofType(type)`; target ABI is a downstream contract.
+  AlignofTypeExpr = AlignofKW LParen type:TypeNameSyntax RParen => AlignofType(type);
+
+  ;; Compile-time type size query.
+  ;; Canonical lowering uses GL intrinsic `SizeofType(type)`; target ABI is a downstream contract.
+  SizeofTypeExpr = SizeofKW LParen type:TypeNameSyntax RParen => SizeofType(type);
 
   ;; Struct literal surface form: `T { a: expr, b: expr }`.
   ;; Stage 4 does not have a dedicated struct-literal intrinsic, so we encode this as
@@ -960,7 +1068,9 @@ section macros {
   ;; while still validating against (and emitting) canonical GL intrinsics.
   sem: {
     LUnit: { callee: Unit; fields: { name: name; items: items; }; };
-    LProc: { callee: Proc; fields: { name: name; params: params; ret: ret; decls: decls; body: body; }; };
+    LTrait: { callee: TraitDecl; fields: { name: name; items: items; }; };
+    LImpl: { callee: ImplDecl; fields: { name: name; type: type; items: items; }; };
+    LProc: { callee: Proc; fields: { name: name; params: params; ret: ret; decls: decls; body: body; type_params: gen; }; };
     LProcExtern: { callee: Proc; fields: { name: name; params: params; ret: ret; decls: decls; body: body; extern: abi; link_name: link_name; }; };
     LVar: { callee: Var; fields: { name: name; type: type; init: init; }; };
     LVarPat: { callee: VarPat; fields: { pat: pat; type: type; init: init; }; };

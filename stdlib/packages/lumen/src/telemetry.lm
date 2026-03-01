@@ -1,0 +1,2 @@
+mod lumen::telemetry;
+// Telemetry, e.g. logging, metrics, tracing, etc.

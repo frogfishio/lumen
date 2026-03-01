@@ -1,0 +1,64 @@
+mod lumen::bytes;
+
+use lumen::slice;
+
+pub fn len(bytes: Slice[U8]) -> Usize {
+	slice::len_u8(bytes)
+}
+
+pub fn is_empty(bytes: Slice[U8]) -> bool {
+	slice::is_empty_u8(bytes)
+}
+
+pub fn starts_with(bytes: Slice[U8], prefix: Slice[U8]) -> bool {
+	let bl: Usize = slice::len_u8(bytes);
+	let pl: Usize = slice::len_u8(prefix);
+	if pl > bl {
+		return false;
+	}
+	let mut i: Usize = 0 as Usize;
+	while i < pl {
+		unsafe {
+			if slice::get_unchecked_u8(bytes, i) != slice::get_unchecked_u8(prefix, i) {
+				return false;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	true
+}
+
+pub fn index_of_byte(bytes: Slice[U8], needle: U8, start: Usize) -> I64 {
+	let l: Usize = slice::len_u8(bytes);
+	let mut i: Usize = start;
+	while i < l {
+		unsafe {
+			if slice::get_unchecked_u8(bytes, i) == needle {
+				return i as I64;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	-1 as I64
+}
+
+// JSON whitespace is limited to: space, tab, LF, CR.
+pub fn is_ascii_ws(b: U8) -> bool {
+	b == (32 as U8) || b == (9 as U8) || b == (10 as U8) || b == (13 as U8)
+}
+
+// Returns the first index >= start that is not ASCII whitespace.
+pub fn skip_ascii_ws(bytes: Slice[U8], start: Usize) -> Usize {
+	let l: Usize = slice::len_u8(bytes);
+	let mut i: Usize = start;
+	while i < l {
+		unsafe {
+			let c: U8 = slice::get_unchecked_u8(bytes, i);
+			if !is_ascii_ws(c) {
+				return i;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	l
+}

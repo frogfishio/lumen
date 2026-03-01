@@ -1,0 +1,138 @@
+mod lumen;
+
+pub enum Option[T] {
+  Some(T),
+  None
+}
+
+pub enum Result[T, E] {
+  Ok(T),
+  Err(E)
+}
+
+// ---- Error (stdlib-wide) ----
+
+// Minimal, allocation-free error payload.
+//
+// Conventions (v0):
+// - `code` is a small numeric discriminator (module-specific constants).
+// - `at` is an index into the relevant input (bytes/code units), when applicable.
+// - `msg` is typically a static string literal (view).
+//
+// Enum variants currently support only a single payload type, so we wrap the
+// common (code, index, msg) triple in a small payload struct.
+
+pub struct ErrorAt {
+  code: I32,
+  at: Usize,
+  msg: String,
+}
+
+pub enum Error {
+  At(ErrorAt)
+}
+
+pub fn error_at(code: I32, at: Usize, msg: String) -> Error {
+  Error::At(ErrorAt { code: code, at: at, msg: msg })
+}
+
+pub fn error_code(e: Error) -> I32 {
+  match e {
+    At(x) => x.code,
+  }
+}
+
+pub fn error_index(e: Error) -> Usize {
+  match e {
+    At(x) => x.at,
+  }
+}
+
+pub fn error_msg_ptr(e: Error) -> Ptr[U8] {
+  match e {
+    At(x) => x.msg.data,
+  }
+}
+
+pub fn error_msg_len(e: Error) -> I64 {
+  match e {
+    At(x) => x.msg.len,
+  }
+}
+
+// ---- Option helpers (total; no panic in v0) ----
+
+pub fn option_is_some[T](o: Option[T]) -> bool {
+  match o {
+    Some(_) => true,
+    None => false,
+  }
+}
+
+pub fn option_is_none[T](o: Option[T]) -> bool {
+  match o {
+    Some(_) => false,
+    None => true,
+  }
+}
+
+pub fn option_unwrap_or[T](o: Option[T], default: T) -> T {
+  match o {
+    Some(v) => v,
+    None => default,
+  }
+}
+
+pub fn option_or[T](a: Option[T], b: Option[T]) -> Option[T] {
+  match a {
+    Some(v) => Some(v),
+    None => b,
+  }
+}
+
+pub fn option_ok_or[T, E](a: Option[T], err: E) -> Result[T, E] {
+  match a {
+    Some(v) => Ok(v),
+    None => Err(err),
+  }
+}
+
+// Strict typed-AST boundary: concrete instantiations of option_* helpers.
+pub fn option_is_some_i32(o: Option[I32]) -> bool { option_is_some[I32](o) }
+pub fn option_is_none_i32(o: Option[I32]) -> bool { option_is_none[I32](o) }
+pub fn option_unwrap_or_i32(o: Option[I32], default: I32) -> I32 { option_unwrap_or[I32](o, default) }
+pub fn option_or_i32(a: Option[I32], b: Option[I32]) -> Option[I32] { option_or[I32](a, b) }
+pub fn option_ok_or_i32(a: Option[I32], err: I32) -> Result[I32, I32] { option_ok_or@<I32, I32>(a, err) }
+
+// Strict typed-AST boundary: provide at least one concrete instantiation of the
+// core generic nominals.
+pub fn strict_instantiations_i32() -> I32 {
+  let o: Option[I32] = Some(0 as I32);
+  let _b: bool = option_is_some_i32(o);
+  let r: Result[I32, I32] = Ok(0 as I32);
+  match r {
+    Ok(_) => 0 as I32,
+    Err(_) => 0 as I32,
+  }
+}
+
+// PartialEq
+// trait Eq {
+//     fn eq(self: &Self, other: &Self) -> bool;
+// }
+
+// trait Clone {
+//   fn clone(&self) -> Self;
+// }
+
+// trait PartialOrd {
+//   fn partial_cmp(&self, other: &Self) -> Option<Ordering>;
+// }
+
+// trait Ord: PartialOrd + Eq {
+//   fn cmp(&self, other: &Self) -> Ordering;
+// }
+
+// trait Hash {
+//   fn hash(&self) -> u64;
+// }

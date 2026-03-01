@@ -1,0 +1,6 @@
+mod hello;
+
+pub fn hello() -> I32 {
+  0 as I32
+}
+

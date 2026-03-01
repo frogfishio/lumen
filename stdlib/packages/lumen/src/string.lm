@@ -1,0 +1,117 @@
+mod lumen::string;
+
+// (WIP) Keeping this module minimal while we
+// identify a frontend parser edge case.
+
+use lumen::mem::*;
+use lumen::slice::*;
+use lumen::utf8;
+
+unsafe fn _c_strlen_at(p: Ptr[U8], i: Usize) -> Usize {
+	let c: U8 = p[i as I64]!;
+	if c == (0 as U8) {
+		i
+	} else {
+		_c_strlen_at(p, i + (1 as Usize))
+	}
+}
+
+// Returns the number of bytes before the first NUL.
+pub unsafe fn c_strlen(p: Ptr[U8]) -> Usize {
+	if (p as Usize) == (0 as Usize) {
+		return 0 as Usize;
+	}
+	_c_strlen_at(p, 0 as Usize)
+}
+
+// Copies a NUL-terminated C string into a byte slice (excluding the trailing NUL).
+//
+// Ownership: the returned `Slice[U8]` header is heap-allocated (via `slice::make`)
+// and its backing buffer is heap-allocated (via `mem::alloc`). Callers must free
+// both when done.
+pub unsafe fn from_cstr(p: Ptr[U8]) -> Slice[U8] {
+	let n: Usize = c_strlen(p);
+	if n == (0 as Usize) {
+		return lumen::slice::make_u8(0 as Ptr[U8], 0 as Usize);
+	}
+	let data_u: Usize = alloc(n);
+	let _ = memcpy(data_u, p as Usize, n);
+	let data: Ptr[U8] = data_u as Ptr[U8];
+	lumen::slice::make_u8(data, n)
+}
+
+// Repro helper: thin wrappers used by parsers.
+pub fn len(bytes: Slice[U8]) -> Usize {
+	lumen::slice::len_u8(bytes)
+}
+
+pub fn is_empty(bytes: Slice[U8]) -> bool {
+	lumen::slice::is_empty_u8(bytes)
+}
+
+pub fn eq(a: Slice[U8], b: Slice[U8]) -> bool {
+	let al: Usize = lumen::slice::len_u8(a);
+	let bl: Usize = lumen::slice::len_u8(b);
+	if al != bl {
+		return false;
+	}
+	let mut i: Usize = 0 as Usize;
+	while i < al {
+		unsafe {
+			if lumen::slice::get_unchecked_u8(a, i) != lumen::slice::get_unchecked_u8(b, i) {
+				return false;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	true
+}
+
+// JSON whitespace is limited to: space, tab, LF, CR.
+pub fn is_ascii_ws(b: U8) -> bool {
+	b == (32 as U8) || b == (9 as U8) || b == (10 as U8) || b == (13 as U8)
+}
+
+// Returns the first index >= start that is not ASCII whitespace.
+pub fn skip_ascii_ws(bytes: Slice[U8], start: Usize) -> Usize {
+	let l: Usize = lumen::slice::len_u8(bytes);
+	let mut i: Usize = start;
+	while i < l {
+		unsafe {
+			let c: U8 = lumen::slice::get_unchecked_u8(bytes, i);
+			if !is_ascii_ws(c) {
+				return i;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	l
+}
+
+pub fn starts_with(bytes: Slice[U8], prefix: Slice[U8]) -> bool {
+	let bl: Usize = lumen::slice::len_u8(bytes);
+	let pl: Usize = lumen::slice::len_u8(prefix);
+	if pl > bl {
+		return false;
+	}
+	let mut i: Usize = 0 as Usize;
+	while i < pl {
+		unsafe {
+			if lumen::slice::get_unchecked_u8(bytes, i) != lumen::slice::get_unchecked_u8(prefix, i) {
+				return false;
+			}
+		}
+		i = i + (1 as Usize);
+	}
+	true
+}
+
+// Returns true if `bytes` is valid UTF-8.
+pub fn is_valid_utf8(bytes: Slice[U8]) -> bool {
+	utf8::validate(bytes)
+}
+
+
+// ---- Ideas ------
+// Transparent Small-String / Small-VectorString is always the same type, but the compiler chooses inline storage (up to 23 bytes) or heap automatically. You can query s.is_inline() if you care. Zero API difference. Rust tried this with smallvec, but it’s never been this seamless.
+// Explicit View[T] as a core stdlib primitiveStrView, SliceView[T], MapView[K,V] — fat pointers that are the only way to pass borrowed data. No &str vs String confusion. The ! unsafe deref only appears when you go from view to raw pointer.

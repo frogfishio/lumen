@@ -1,0 +1,30 @@
+mod lumen::mem;
+
+// Memory primitives implemented by the temporary C shim.
+
+extern "C" unsafe fn lf_alloc(bytes: Usize) -> Usize;
+extern "C" unsafe fn lf_free(ptr: Usize) -> I32;
+
+extern "C" unsafe fn lf_memcpy(dst: Usize, src: Usize, n: Usize) -> Usize;
+extern "C" unsafe fn lf_memmove(dst: Usize, src: Usize, n: Usize) -> Usize;
+extern "C" unsafe fn lf_memset(dst: Usize, byte: I32, n: Usize) -> Usize;
+
+pub unsafe fn alloc(bytes: Usize) -> Usize {
+  lf_alloc(bytes)
+}
+
+pub unsafe fn free(ptr: Usize) -> I32 {
+  lf_free(ptr)
+}
+
+pub unsafe fn memcpy(dst: Usize, src: Usize, n: Usize) -> Usize {
+  lf_memcpy(dst, src, n)
+}
+
+pub unsafe fn memmove(dst: Usize, src: Usize, n: Usize) -> Usize {
+  lf_memmove(dst, src, n)
+}
+
+pub unsafe fn memset(dst: Usize, byte: I32, n: Usize) -> Usize {
+  lf_memset(dst, byte, n)
+}

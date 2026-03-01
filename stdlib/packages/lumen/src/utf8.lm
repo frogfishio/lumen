@@ -1,0 +1,231 @@
+mod lumen::utf8;
+
+use lumen::slice;
+
+unsafe fn _u8_at_ptr(p: Ptr[U8], i: Usize) -> U8 {
+	p[i as I64]!
+}
+
+unsafe fn _u8_at(bytes: Slice[U8], i: Usize) -> U8 {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	p[i as I64]!
+}
+
+pub fn is_hex_digit(b: U8) -> bool {
+	if b >= (48 as U8) {
+		if b <= (57 as U8) {
+			true
+		} else {
+			if b >= (65 as U8) {
+				if b <= (70 as U8) {
+					true
+				} else {
+					if b >= (97 as U8) {
+						b <= (102 as U8)
+					} else {
+						false
+					}
+				}
+			} else {
+				false
+			}
+		}
+	} else {
+		false
+	}
+}
+
+// Precondition: `b` is a hex digit.
+pub fn hex_val(b: U8) -> I32 {
+	if b >= (48 as U8) {
+		if b <= (57 as U8) {
+			(b - (48 as U8)) as I32
+		} else {
+			if b >= (65 as U8) {
+				if b <= (70 as U8) {
+					(10 as I32) + ((b - (65 as U8)) as I32)
+				} else {
+					(10 as I32) + ((b - (97 as U8)) as I32)
+				}
+			} else {
+				(10 as I32) + ((b - (97 as U8)) as I32)
+			}
+		}
+	} else {
+		0 as I32
+	}
+}
+
+// Decodes 4 ASCII hex digits at `i` as a 16-bit value.
+// Returns 0..65535, or -1 on failure.
+pub fn decode_u16_hex4_at(bytes: Slice[U8], i: Usize) -> I32 {
+	let l: Usize = slice::len[U8](bytes);
+	let need: Usize = 4 as Usize;
+	if i + need > l {
+		return -1 as I32;
+	}
+	let mut h0: U8 = 0 as U8;
+	let mut h1: U8 = 0 as U8;
+	let mut h2: U8 = 0 as U8;
+	let mut h3: U8 = 0 as U8;
+	unsafe {
+		let p: Ptr[U8] = slice::ptr[U8](bytes);
+		h0 = p[i as I64]!;
+		h1 = p[(i + (1 as Usize)) as I64]!;
+		h2 = p[(i + (2 as Usize)) as I64]!;
+		h3 = p[(i + (3 as Usize)) as I64]!;
+	}
+	if !is_hex_digit(h0) { return -1 as I32; }
+	if !is_hex_digit(h1) { return -1 as I32; }
+	if !is_hex_digit(h2) { return -1 as I32; }
+	if !is_hex_digit(h3) { return -1 as I32; }
+	let v0: I32 = hex_val(h0);
+	let v1: I32 = hex_val(h1);
+	let v2: I32 = hex_val(h2);
+	let v3: I32 = hex_val(h3);
+	(v0 * (4096 as I32)) + (v1 * (256 as I32)) + (v2 * (16 as I32)) + v3
+}
+
+// Validates one UTF-8 codepoint byte sequence starting at `i`.
+// Returns the index after the sequence, or -1 on failure.
+
+// Same as `scan1`, but operates on raw pointer + length.
+//
+// Safety: `p` must be valid for reads of `len` bytes.
+pub unsafe fn scan1_at(p: Ptr[U8], len: Usize, i: Usize) -> I64 {
+	if i >= len {
+		return -1 as I64;
+	}
+	let b0: U8 = _u8_at_ptr(p, i);
+	let b0s: I32 = b0 as I32;
+	let b0u: I32 = if b0s < (0 as I32) { b0s + (256 as I32) } else { b0s };
+	if b0u < (128 as I32) {
+		return (i + (1 as Usize)) as I64;
+	}
+	if b0u < (0xC2 as I32) {
+		return -1 as I64;
+	}
+	if b0u <= (0xDF as I32) {
+		let i2: Usize = i + (1 as Usize);
+		if i2 >= len { return -1 as I64; }
+		let b1: U8 = _u8_at_ptr(p, i2);
+		let b1s: I32 = b1 as I32;
+		let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+		if b1u < (0x80 as I32) { return -1 as I64; }
+		if b1u > (0xBF as I32) { return -1 as I64; }
+		return (i + (2 as Usize)) as I64;
+	}
+	if b0u <= (0xEF as I32) {
+		let i2: Usize = i + (1 as Usize);
+		let i3: Usize = i + (2 as Usize);
+		if i3 >= len { return -1 as I64; }
+		let b1: U8 = _u8_at_ptr(p, i2);
+		let b2: U8 = _u8_at_ptr(p, i3);
+		let b1s: I32 = b1 as I32;
+		let b2s: I32 = b2 as I32;
+		let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+		let b2u: I32 = if b2s < (0 as I32) { b2s + (256 as I32) } else { b2s };
+		if b1u < (0x80 as I32) { return -1 as I64; }
+		if b1u > (0xBF as I32) { return -1 as I64; }
+		if b2u < (0x80 as I32) { return -1 as I64; }
+		if b2u > (0xBF as I32) { return -1 as I64; }
+		if b0u == (0xE0 as I32) { if b1u < (0xA0 as I32) { return -1 as I64; } }
+		if b0u == (0xED as I32) { if b1u > (0x9F as I32) { return -1 as I64; } }
+		return (i + (3 as Usize)) as I64;
+	}
+	if b0u <= (0xF4 as I32) {
+		let i2: Usize = i + (1 as Usize);
+		let i3: Usize = i + (2 as Usize);
+		let i4: Usize = i + (3 as Usize);
+		if i4 >= len { return -1 as I64; }
+		let b1: U8 = _u8_at_ptr(p, i2);
+		let b2: U8 = _u8_at_ptr(p, i3);
+		let b3: U8 = _u8_at_ptr(p, i4);
+		let b1s: I32 = b1 as I32;
+		let b2s: I32 = b2 as I32;
+		let b3s: I32 = b3 as I32;
+		let b1u: I32 = if b1s < (0 as I32) { b1s + (256 as I32) } else { b1s };
+		let b2u: I32 = if b2s < (0 as I32) { b2s + (256 as I32) } else { b2s };
+		let b3u: I32 = if b3s < (0 as I32) { b3s + (256 as I32) } else { b3s };
+		if b1u < (0x80 as I32) { return -1 as I64; }
+		if b1u > (0xBF as I32) { return -1 as I64; }
+		if b2u < (0x80 as I32) { return -1 as I64; }
+		if b2u > (0xBF as I32) { return -1 as I64; }
+		if b3u < (0x80 as I32) { return -1 as I64; }
+		if b3u > (0xBF as I32) { return -1 as I64; }
+		if b0u == (0xF0 as I32) { if b1u < (0x90 as I32) { return -1 as I64; } }
+		if b0u == (0xF4 as I32) { if b1u > (0x8F as I32) { return -1 as I64; } }
+		return (i + (4 as Usize)) as I64;
+	}
+	-1 as I64
+}
+
+pub fn scan1(bytes: Slice[U8], i: Usize) -> I64 {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	let l: Usize = slice::len[U8](bytes);
+	unsafe { scan1_at(p, l, i) }
+}
+
+// Scans UTF-8 starting at `start` until the end of the slice.
+// Returns the index after the last valid codepoint (normally `len`), or -1 on failure.
+
+// Same as `scan`, but operates on raw pointer + length.
+//
+// Safety: `p` must be valid for reads of `len` bytes.
+pub unsafe fn scan_at(p: Ptr[U8], len: Usize, start: Usize) -> I64 {
+	if start > len {
+		return -1 as I64;
+	}
+	let mut i: Usize = start;
+	while i < len {
+		let next: I64 = scan1_at(p, len, i);
+		if next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = next as Usize;
+	}
+	i as I64
+}
+
+pub fn scan(bytes: Slice[U8], start: Usize) -> I64 {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	let l: Usize = slice::len[U8](bytes);
+	unsafe { scan_at(p, l, start) }
+}
+
+// Safety: `p` must be valid for reads of `len` bytes.
+pub unsafe fn validate_at(p: Ptr[U8], len: Usize) -> bool {
+	scan_at(p, len, 0 as Usize) == (len as I64)
+}
+
+pub fn validate(bytes: Slice[U8]) -> bool {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	let l: Usize = slice::len[U8](bytes);
+	unsafe { validate_at(p, l) }
+}
+
+// Counts UTF-8 codepoints in the slice.
+// Returns count, or -1 on invalid UTF-8.
+
+// Same as `count_codepoints`, but operates on raw pointer + length.
+//
+// Safety: `p` must be valid for reads of `len` bytes.
+pub unsafe fn count_codepoints_at(p: Ptr[U8], len: Usize) -> I64 {
+	let mut i: Usize = 0 as Usize;
+	let mut n: I64 = 0 as I64;
+	while i < len {
+		let next: I64 = scan1_at(p, len, i);
+		if next < (0 as I64) {
+			return -1 as I64;
+		}
+		i = next as Usize;
+		n = n + (1 as I64);
+	}
+	n
+}
+
+pub fn count_codepoints(bytes: Slice[U8]) -> I64 {
+	let p: Ptr[U8] = slice::ptr[U8](bytes);
+	let l: Usize = slice::len[U8](bytes);
+	unsafe { count_codepoints_at(p, l) }
+}

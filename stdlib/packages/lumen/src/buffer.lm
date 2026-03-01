@@ -1,0 +1,207 @@
+mod lumen::buffer;
+
+use lumen::mem::*;
+use lumen::slice;
+use lumen::Option;
+
+// Minimal growable buffer to serve as early stdlib building block.
+// Representation matches the existing `types::vector` experiment style:
+// a heap-allocated header (4 * Usize words) plus a heap data region.
+
+// Workaround for current `lumenc` generic-proc binder issue:
+// keep at least one generic nominal type declaration in this module.
+struct GenericSentinel[T] { v: T }
+
+// Strict typed-AST boundary: provide a concrete instantiation of the generic
+// nominal in a type position (avoids relying on generic struct literals).
+// Note: use value-level instantiation for strict boundary (see new_i32 below).
+
+pub type Buffer = Usize;
+
+// Header layout (4 * Usize):
+//   [0] data_ptr (Usize)
+//   [1] len      (Usize)
+//   [2] cap      (Usize)
+//   [3] elem_sz  (Usize)
+
+const WORD_BYTES: Usize = 8 as Usize;
+const HDR_WORDS: Usize = 4 as Usize;
+const I32_BYTES: Usize = 4 as Usize;
+
+const OFF_DATA_PTR: Usize = 0 as Usize;
+const OFF_LEN: Usize = 8 as Usize;
+const OFF_CAP: Usize = 16 as Usize;
+const OFF_ELEM_SZ: Usize = 24 as Usize;
+
+unsafe fn _addr_data_ptr(b: Buffer) -> Usize { b + OFF_DATA_PTR }
+unsafe fn _addr_len(b: Buffer) -> Usize { b + OFF_LEN }
+unsafe fn _addr_cap(b: Buffer) -> Usize { b + OFF_CAP }
+unsafe fn _addr_elem_sz(b: Buffer) -> Usize { b + OFF_ELEM_SZ }
+
+unsafe fn _load_usize(addr: Usize) -> Usize {
+	let p: Ptr[Usize] = addr as Ptr[Usize];
+	*p
+}
+
+unsafe fn _store_usize(addr: Usize, val: Usize) -> I32 {
+	let p: Ptr[Usize] = addr as Ptr[Usize];
+	*p = val;
+	0 as I32
+}
+
+pub fn new[T]() -> Buffer {
+	unsafe {
+		let es0: Usize = sizeof(T) as Usize;
+		// Keep the minimum size at least 4 bytes so i32 helpers remain safe.
+		let es: Usize = if es0 < I32_BYTES { I32_BYTES } else { es0 };
+		let hdr_bytes: Usize = HDR_WORDS * WORD_BYTES;
+		let h: Usize = alloc(hdr_bytes);
+		if h == (0 as Usize) {
+			return 0 as Usize;
+		}
+
+		let _ = _store_usize(_addr_data_ptr(h), 0 as Usize);
+		let _ = _store_usize(_addr_len(h), 0 as Usize);
+		let _ = _store_usize(_addr_cap(h), 0 as Usize);
+		let _ = _store_usize(_addr_elem_sz(h), es);
+		h
+	}
+}
+
+pub fn len(b: Buffer) -> Usize {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe { _load_usize(_addr_len(b)) }
+}
+
+pub fn cap(b: Buffer) -> Usize {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe { _load_usize(_addr_cap(b)) }
+}
+
+pub fn raw_data_ptr(b: Buffer) -> Usize {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe { _load_usize(_addr_data_ptr(b)) }
+}
+
+pub fn elem_addr(b: Buffer, index: Usize) -> Usize {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe {
+		let data: Usize = _load_usize(_addr_data_ptr(b));
+		let elem_sz: Usize = _load_usize(_addr_elem_sz(b));
+		data + (index * elem_sz)
+	}
+}
+
+// Unchecked pointer-to-element (unsafe, no bounds check).
+pub unsafe fn at_ptr[T](b: Buffer, index: Usize) -> Ptr[T] {
+	(elem_addr(b, index) as Usize) as Ptr[T]
+}
+
+// Returns Option::Some(T) when in-bounds, otherwise Option::None.
+pub fn get[T](b: Buffer, index: Usize) -> Option[T] {
+	let l: Usize = len(b);
+	if index < l {
+		unsafe { Option::Some(get_unchecked[T](b, index)) }
+	} else {
+		Option::None
+	}
+}
+
+// Unchecked element access (unsafe, no bounds check).
+pub unsafe fn get_unchecked[T](b: Buffer, index: Usize) -> T {
+	let p: Ptr[T] = at_ptr[T](b, index);
+	*p
+}
+
+// Pops the last element, decreasing length (does not shrink capacity).
+pub fn pop[T](b: Buffer) -> Option[T] {
+	if b == (0 as Usize) { return Option::None; }
+	let l: Usize = len(b);
+	if l == (0 as Usize) {
+		Option::None
+	} else {
+		unsafe {
+			let idx: Usize = l - (1 as Usize);
+			let v: T = get_unchecked[T](b, idx);
+			let _ = _store_usize(_addr_len(b), idx);
+			Option::Some(v)
+		}
+	}
+}
+
+pub fn push_from_ptr(b: Buffer, src_ptr: Usize) -> Buffer {
+	if b == (0 as Usize) { return 0 as Usize; }
+	if src_ptr == (0 as Usize) { return b; }
+
+	unsafe {
+		let cur_len: Usize = _load_usize(_addr_len(b));
+		let cur_cap: Usize = _load_usize(_addr_cap(b));
+		let elem_sz: Usize = _load_usize(_addr_elem_sz(b));
+
+		if cur_cap <= cur_len {
+			let new_cap: Usize = if cur_cap == (0 as Usize) { 4 as Usize } else { cur_cap * (2 as Usize) };
+			let new_bytes: Usize = new_cap * elem_sz;
+			let new_data: Usize = alloc(new_bytes);
+			if new_data == (0 as Usize) {
+				return b;
+			}
+
+			let old_data: Usize = _load_usize(_addr_data_ptr(b));
+			if old_data != (0 as Usize) {
+				let copy_bytes: Usize = cur_len * elem_sz;
+				let _ = memcpy(new_data, old_data, copy_bytes);
+				let _ = free(old_data);
+			}
+
+			let _ = _store_usize(_addr_data_ptr(b), new_data);
+			let _ = _store_usize(_addr_cap(b), new_cap);
+		}
+
+		let data: Usize = _load_usize(_addr_data_ptr(b));
+		let dst: Usize = data + (cur_len * elem_sz);
+		let next_len: Usize = cur_len + (1 as Usize);
+		let _ = _store_usize(_addr_len(b), next_len);
+		let _ = memcpy(dst, src_ptr, elem_sz);
+		b
+	}
+}
+
+pub fn push[T](b: Buffer, val: T) -> Buffer {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe {
+		let tmp: T = val;
+		let src: Usize = (&tmp as Ptr[T]) as Usize;
+		push_from_ptr(b, src)
+	}
+}
+
+pub unsafe fn as_slice[T](b: Buffer) -> Slice[T] {
+	// Note: this allocates a slice header on the heap. Caller may free it via slice::free_hdr.
+	let data: Usize = raw_data_ptr(b);
+	let l: Usize = len(b);
+	slice::make[T](data as Ptr[T], l)
+}
+
+// Strict typed-AST boundary: provide concrete instantiations for common types.
+pub fn new_i32() -> Buffer {
+	let _s: GenericSentinel[I32] = GenericSentinel { v: 0 as I32 };
+	new[I32]()
+}
+pub unsafe fn at_ptr_i32(b: Buffer, index: Usize) -> Ptr[I32] { at_ptr[I32](b, index) }
+pub fn get_i32(b: Buffer, index: Usize) -> Option[I32] { get[I32](b, index) }
+pub unsafe fn get_unchecked_i32(b: Buffer, index: Usize) -> I32 { get_unchecked[I32](b, index) }
+pub fn pop_i32(b: Buffer) -> Option[I32] { pop[I32](b) }
+pub fn push_i32(b: Buffer, val: I32) -> Buffer { push[I32](b, val) }
+pub unsafe fn as_slice_i32(b: Buffer) -> Slice[I32] { as_slice[I32](b) }
+
+pub fn free_buf(b: Buffer) -> Buffer {
+	if b == (0 as Usize) { return 0 as Usize; }
+	unsafe {
+		let data: Usize = _load_usize(_addr_data_ptr(b));
+		if data != (0 as Usize) {
+			let _ = free(data);
+		}
+		let _ = free(b);
+		0 as Usize
+	}
+}

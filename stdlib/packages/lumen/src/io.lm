@@ -1,0 +1,27 @@
+mod lumen::io;
+
+// IO primitives implemented by the temporary C shim.
+// Keep these "nice" names stable so call sites don't need to change when we
+// eventually drop the shim.
+
+extern "C" unsafe fn lf_puts(s: Ptr[U8]) -> I32;
+extern "C" unsafe fn lf_write_stdout(buf: Usize, len: Usize) -> I32;
+extern "C" unsafe fn lf_write_stderr(buf: Usize, len: Usize) -> I32;
+extern "C" unsafe fn lf_read_stdin(buf: Usize, cap: Usize) -> I32;
+
+pub unsafe fn puts(s: Ptr[U8]) -> I32 {
+  lf_puts(s)
+}
+
+pub unsafe fn write_stdout(buf: Usize, len: Usize) -> I32 {
+  lf_write_stdout(buf, len)
+}
+
+pub unsafe fn write_stderr(buf: Usize, len: Usize) -> I32 {
+  lf_write_stderr(buf, len)
+}
+
+pub unsafe fn read_stdin(buf: Usize, cap: Usize) -> I32 {
+  lf_read_stdin(buf, cap)
+}
+

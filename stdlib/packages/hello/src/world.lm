@@ -1,0 +1,6 @@
+mod hello::world;
+
+pub fn world() -> I32 {
+  42 as I32
+}
+

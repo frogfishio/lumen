@@ -1,0 +1,202 @@
+mod lumen::str;
+
+use lumen::utf8;
+
+pub fn strlen(s: String) -> I64 {
+	byte_len(s)
+}
+
+pub fn byte_len(s: String) -> I64 {
+	s.len
+}
+
+pub fn is_empty(s: String) -> bool {
+	byte_len(s) == (0 as I64)
+}
+
+pub fn ptr(s: String) -> Ptr[U8] {
+	s.data
+}
+
+pub fn streq(a: String, b: String) -> bool {
+	eq(a, b)
+}
+
+// Returns -1, 0, or +1 (like strcmp, but normalized).
+pub fn strcmp(a: String, b: String) -> I32 {
+	let al: I64 = byte_len(a);
+	let bl: I64 = byte_len(b);
+	let n: I64 = if al < bl { al } else { bl };
+	let ap: Ptr[U8] = ptr(a);
+	let bp: Ptr[U8] = ptr(b);
+	let mut i: I64 = 0 as I64;
+	while i < n {
+		unsafe {
+			let ax: U8 = ap[i]!;
+			let bx: U8 = bp[i]!;
+			if ax < bx { return -1 as I32; }
+			if ax > bx { return 1 as I32; }
+		}
+		i = i + (1 as I64);
+	}
+	if al < bl { -1 as I32 } else { if al > bl { 1 as I32 } else { 0 as I32 } }
+}
+
+pub fn eq(a: String, b: String) -> bool {
+	let al: I64 = byte_len(a);
+	let bl: I64 = byte_len(b);
+	if al != bl {
+		return false;
+	}
+	let ap: Ptr[U8] = ptr(a);
+	let bp: Ptr[U8] = ptr(b);
+	let mut i: I64 = 0 as I64;
+	while i < al {
+		unsafe {
+			if ap[i]! != bp[i]! {
+				return false;
+			}
+		}
+		i = i + (1 as I64);
+	}
+	true
+}
+
+pub fn starts_with(s: String, prefix: String) -> bool {
+	let sl: I64 = byte_len(s);
+	let pl: I64 = byte_len(prefix);
+	if pl > sl {
+		return false;
+	}
+	let sp: Ptr[U8] = ptr(s);
+	let pp: Ptr[U8] = ptr(prefix);
+	let mut i: I64 = 0 as I64;
+	while i < pl {
+		unsafe {
+			if sp[i]! != pp[i]! {
+				return false;
+			}
+		}
+		i = i + (1 as I64);
+	}
+	true
+}
+
+pub fn ends_with(s: String, suffix: String) -> bool {
+	let sl: I64 = byte_len(s);
+	let xl: I64 = byte_len(suffix);
+	if xl > sl {
+		return false;
+	}
+	let sp: Ptr[U8] = ptr(s);
+	let xp: Ptr[U8] = ptr(suffix);
+	let start: I64 = sl - xl;
+	let mut i: I64 = 0 as I64;
+	while i < xl {
+		unsafe {
+			if sp[start + i]! != xp[i]! {
+				return false;
+			}
+		}
+		i = i + (1 as I64);
+	}
+	true
+}
+
+// Returns the first index >= start where `needle` occurs, or -1.
+
+pub fn find_byte(s: String, needle: U8, start: I64) -> I64 {
+	let l: I64 = byte_len(s);
+	if start < (0 as I64) {
+		return -1 as I64;
+	}
+	if start >= l {
+		return -1 as I64;
+	}
+	let p: Ptr[U8] = ptr(s);
+	let mut i: I64 = start;
+	while i < l {
+		unsafe {
+			if p[i]! == needle {
+				return i;
+			}
+		}
+		i = i + (1 as I64);
+	}
+	-1 as I64
+}
+
+pub fn index_of_byte(s: String, needle: U8, start: I64) -> I64 {
+	find_byte(s, needle, start)
+}
+
+// JSON whitespace is limited to: space, tab, LF, CR.
+pub fn is_ascii_ws(b: U8) -> bool {
+	b == (32 as U8) || b == (9 as U8) || b == (10 as U8) || b == (13 as U8)
+}
+
+// Returns the first index >= start that is not ASCII whitespace.
+
+pub fn skip_ascii_ws(s: String, start: I64) -> I64 {
+	let l: I64 = byte_len(s);
+	let p: Ptr[U8] = ptr(s);
+	let mut i: I64 = start;
+	if i < (0 as I64) { i = 0 as I64; }
+	while i < l {
+		unsafe {
+			let c: U8 = p[i]!;
+			if !is_ascii_ws(c) {
+				return i;
+			}
+		}
+		i = i + (1 as I64);
+	}
+	l
+}
+
+// Unsafe-by-contract: does not validate UTF-8 boundaries.
+fn substr_bytes_unchecked(s: String, start: I64, len: I64) -> String {
+	let base: Ptr[U8] = ptr(s);
+	let data: Ptr[U8] = base[start];
+	string.utf8(data, len)
+}
+
+// Total, non-panicking: returns empty string view on out-of-bounds.
+pub fn substr_bytes_checked(s: String, start: I64, len: I64) -> String {
+	let l: I64 = byte_len(s);
+	if start < (0 as I64) { return string.utf8(ptr(s), 0 as I64); }
+	if len < (0 as I64) { return string.utf8(ptr(s), 0 as I64); }
+	if start > l { return string.utf8(ptr(s), 0 as I64); }
+	if start + len > l { return string.utf8(ptr(s), 0 as I64); }
+	substr_bytes_unchecked(s, start, len)
+}
+
+pub fn trim_ascii_ws(s: String) -> String {
+	let l: I64 = byte_len(s);
+	let start: I64 = skip_ascii_ws(s, 0 as I64);
+	if start >= l {
+		return string.utf8(ptr(s), 0 as I64);
+	}
+	let p: Ptr[U8] = ptr(s);
+	let mut end: I64 = l;
+	while end > start {
+		unsafe {
+			let c: U8 = p[end - (1 as I64)]!;
+			if !is_ascii_ws(c) {
+				return substr_bytes_checked(s, start, end - start);
+			}
+		}
+		end = end - (1 as I64);
+	}
+	string.utf8(ptr(s), 0 as I64)
+}
+
+pub fn is_valid_utf8(s: String) -> bool {
+	unsafe { utf8::validate_at(ptr(s), byte_len(s) as Usize) }
+}
+
+// Counts UTF-8 codepoints in the string.
+// Returns count, or -1 on invalid UTF-8.
+pub fn count_codepoints(s: String) -> I64 {
+	unsafe { utf8::count_codepoints_at(ptr(s), byte_len(s) as Usize) }
+}

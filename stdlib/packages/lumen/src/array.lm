@@ -1,0 +1,49 @@
+mod lumen::array;
+
+// Minimal array/pointer helpers for experiments.
+// Note: real fixed-size arrays are a distinct type form (e.g. `[I32; 4]`),
+// but most operations can be expressed in terms of a pointer + index.
+
+// Workaround for current `lumenc` generic-proc binder issue:
+// keep at least one generic nominal type declaration in this module.
+
+struct GenericSentinel[T] { v: T }
+
+
+// Pointer indexing in Lumen is the "array primitive".
+// These helpers are intentionally small and unsafe-by-default.
+
+pub unsafe fn ptr_at[T](base: Ptr[T], idx: I64) -> Ptr[T] {
+	base[idx]
+}
+
+pub unsafe fn get[T](base: Ptr[T], idx: I64) -> T {
+	let p: Ptr[T] = ptr_at[T](base, idx);
+	p[0 as I64]!
+}
+
+pub unsafe fn set[T](base: Ptr[T], idx: I64, val: T) -> I32 {
+	let p: Ptr[T] = base[idx];
+	*p = val;
+	0 as I32
+}
+
+pub unsafe fn swap[T](base: Ptr[T], a: I64, b: I64) -> I32 {
+	let tmp: T = get[T](base, a);
+	let _ = set[T](base, a, get[T](base, b));
+	set[T](base, b, tmp)
+}
+
+pub unsafe fn get_i32(base: Ptr[I32], idx: I64) -> I32 {
+	let _p: Ptr[I32] = ptr_at[I32](base, idx);
+	let _s: GenericSentinel[I32] = GenericSentinel { v: 0 as I32 };
+	get[I32](base, idx)
+}
+
+pub unsafe fn set_i32(base: Ptr[I32], idx: I64, val: I32) -> I32 {
+	set[I32](base, idx, val)
+}
+
+pub unsafe fn swap_i32(base: Ptr[I32], a: I64, b: I64) -> I32 {
+	swap[I32](base, a, b)
+}

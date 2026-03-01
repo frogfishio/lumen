@@ -1,0 +1,168 @@
+mod lumen::slice;
+
+use lumen::mem::*;
+
+// Workaround for current `lumenc` generic-proc binder issue:
+// keep at least one generic nominal type declaration in this module.
+struct GenericSentinel[T] { v: T }
+
+// Strict typed-AST boundary: provide a concrete instantiation of the generic
+// nominal in a type position.
+// Note: use value-level instantiation for strict boundary (see len_i32 below).
+
+// Slice header layout (current experiment ABI):
+//   [0] data_ptr : Ptr[T]
+//   [8] len      : I64
+//
+// Note: these helpers allocate headers on the heap so slice values can be
+// returned from functions without referencing stack-allocated headers.
+const HDR_BYTES: Usize = 16 as Usize;
+const OFF_PTR: Usize = 0 as Usize;
+const OFF_LEN: Usize = 8 as Usize;
+
+pub unsafe fn make[T](data: Ptr[T], len: Usize) -> Slice[T] {
+	let h: Usize = alloc(HDR_BYTES);
+	let hp: Ptr[Ptr[T]] = (h + OFF_PTR) as Ptr[Ptr[T]];
+	*hp = data;
+	let hl: Ptr[I64] = (h + OFF_LEN) as Ptr[I64];
+	*hl = len as I64;
+	h as Slice[T]
+}
+
+// Frees only the slice header allocated by `make`/`sub`/`take`/`drop`/`concat`.
+// (Does not free the underlying data buffer.)
+pub unsafe fn free_hdr[T](s: Slice[T]) -> I32 {
+	free(s as Usize)
+}
+
+pub fn len[T](s: Slice[T]) -> Usize {
+	s.len
+}
+
+pub fn is_empty[T](s: Slice[T]) -> bool {
+	len[T](s) == 0 as Usize
+}
+
+pub fn ptr[T](s: Slice[T]) -> Ptr[T] {
+	s.ptr
+}
+
+pub unsafe fn sub[T](s: Slice[T], start: Usize, n: Usize) -> Slice[T] {
+	let l: Usize = len[T](s);
+	if start >= l {
+		return make[T](ptr[T](s), 0 as Usize);
+	}
+	let rem: Usize = l - start;
+	let out_n: Usize = if n <= rem { n } else { rem };
+	let p: Ptr[T] = ptr[T](s)[start as I64];
+	make[T](p, out_n)
+}
+
+pub unsafe fn take[T](s: Slice[T], n: Usize) -> Slice[T] {
+	sub[T](s, 0 as Usize, n)
+}
+
+pub unsafe fn drop[T](s: Slice[T], n: Usize) -> Slice[T] {
+	let l: Usize = len[T](s);
+	let start: Usize = if n <= l { n } else { l };
+	sub[T](s, start, l - start)
+}
+
+pub unsafe fn copy_to[T](dst: Ptr[T], src: Slice[T]) -> Usize {
+	let n: Usize = len[T](src);
+	if n == 0 as Usize {
+		return 0 as Usize;
+	}
+	let elem_sz: Usize = sizeof(T) as Usize;
+	let bytes: Usize = n * elem_sz;
+	let _ = memcpy(dst as Usize, ptr[T](src) as Usize, bytes);
+	bytes
+}
+
+pub unsafe fn concat[T](a: Slice[T], b: Slice[T]) -> Slice[T] {
+	let al: Usize = len[T](a);
+	let bl: Usize = len[T](b);
+	let total: Usize = al + bl;
+	let elem_sz: Usize = sizeof(T) as Usize;
+	let bytes: Usize = total * elem_sz;
+	let data_u: Usize = alloc(bytes);
+	let data: Ptr[T] = data_u as Ptr[T];
+	let _ = memcpy(data_u, ptr[T](a) as Usize, al * elem_sz);
+	let off: Usize = data_u + (al * elem_sz);
+	let _ = memcpy(off, ptr[T](b) as Usize, bl * elem_sz);
+	make[T](data, total)
+}
+
+// Returns Option::Some(T) when in-bounds, otherwise Option::None.
+pub fn get[T](s: Slice[T], i: Usize) -> Option[T] {
+	if i < s.len {
+		unsafe { Option::Some(s[i]!) }
+	} else {
+		Option::None
+	}
+}
+
+// Unchecked element access (unsafe, no bounds check).
+pub unsafe fn get_unchecked[T](s: Slice[T], i: Usize) -> T {
+	s[i]!
+}
+
+// Unchecked pointer-to-element (unsafe, no bounds check).
+pub unsafe fn at_ptr[T](s: Slice[T], i: Usize) -> Ptr[T] {
+	ptr[T](s)[i as I64]
+}
+
+// Strict typed-AST boundary: provide concrete instantiations for common types.
+pub unsafe fn make_i32(data: Ptr[I32], len: Usize) -> Slice[I32] { make[I32](data, len) }
+pub unsafe fn free_hdr_i32(s: Slice[I32]) -> I32 { free_hdr[I32](s) }
+pub fn len_i32(s: Slice[I32]) -> Usize {
+	let _s: GenericSentinel[I32] = GenericSentinel { v: 0 as I32 };
+	len[I32](s)
+}
+pub fn is_empty_i32(s: Slice[I32]) -> bool { is_empty[I32](s) }
+pub fn ptr_i32(s: Slice[I32]) -> Ptr[I32] { ptr[I32](s) }
+pub unsafe fn sub_i32(s: Slice[I32], start: Usize, n: Usize) -> Slice[I32] { sub[I32](s, start, n) }
+pub unsafe fn take_i32(s: Slice[I32], n: Usize) -> Slice[I32] { take[I32](s, n) }
+pub unsafe fn drop_i32(s: Slice[I32], n: Usize) -> Slice[I32] { drop[I32](s, n) }
+pub unsafe fn copy_to_i32(dst: Ptr[I32], src: Slice[I32]) -> Usize { copy_to[I32](dst, src) }
+pub unsafe fn concat_i32(a: Slice[I32], b: Slice[I32]) -> Slice[I32] { concat[I32](a, b) }
+pub fn get_i32(s: Slice[I32], i: Usize) -> Option[I32] { get[I32](s, i) }
+pub unsafe fn get_unchecked_i32(s: Slice[I32], i: Usize) -> I32 { get_unchecked[I32](s, i) }
+pub unsafe fn at_ptr_i32(s: Slice[I32], i: Usize) -> Ptr[I32] { at_ptr[I32](s, i) }
+
+// Strict typed-AST boundary: byte slice helpers.
+// These avoid calling generic procs at the strict boundary.
+pub unsafe fn make_u8(data: Ptr[U8], len: Usize) -> Slice[U8] {
+	let h: Usize = alloc(HDR_BYTES);
+	let hp: Ptr[Ptr[U8]] = (h + OFF_PTR) as Ptr[Ptr[U8]];
+	*hp = data;
+	let hl: Ptr[I64] = (h + OFF_LEN) as Ptr[I64];
+	*hl = len as I64;
+	h as Slice[U8]
+}
+
+pub unsafe fn free_hdr_u8(s: Slice[U8]) -> I32 {
+	free(s as Usize)
+}
+
+pub fn len_u8(s: Slice[U8]) -> Usize {
+	s.len
+}
+
+pub fn is_empty_u8(s: Slice[U8]) -> bool {
+	len_u8(s) == 0 as Usize
+}
+
+pub fn ptr_u8(s: Slice[U8]) -> Ptr[U8] {
+	s.ptr
+}
+
+pub unsafe fn at_ptr_u8(s: Slice[U8], i: Usize) -> Ptr[U8] {
+	ptr_u8(s)[i as I64]
+}
+
+pub unsafe fn get_unchecked_u8(s: Slice[U8], i: Usize) -> U8 {
+	let p: Ptr[U8] = at_ptr_u8(s, i);
+	*p
+}
+

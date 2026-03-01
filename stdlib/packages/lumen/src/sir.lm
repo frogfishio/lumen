@@ -1,0 +1,2 @@
+mod lumen::sir;
+// low-level code injection e.g. inline SIR, inline assembly, etc. for performance critical code, e.g. math functions, atomics, etc. using FP coprocessor, atomic instructions, SIMD instructions, etc.
