@@ -1,6 +1,6 @@
 # Intro
 
-I come from opcodes.
+I started with opcodes.
 
 You know — programming a computer with hex codes on a hex keyboard. Like playing a game on hard mode: one mistake, and you start again.
 
